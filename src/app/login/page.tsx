@@ -1,7 +1,43 @@
+"use client";
+
 import { Sparkles } from "lucide-react";
 import Link from "next/link";
+import { useState } from "react";
+import { useRouter, useSearchParams } from "next/navigation";
+import { createClient } from "@/lib/supabase";
 
 export default function LoginPage() {
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const supabase = createClient();
+  const [email, setEmail] = useState("");
+  const [password, setPassword] = useState("");
+  const [error, setError] = useState("");
+  const [loading, setLoading] = useState(false);
+
+  const justRegistered = searchParams.get("registered") === "true";
+
+  async function handleLogin(e: React.FormEvent) {
+    e.preventDefault();
+    setError("");
+    setLoading(true);
+
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email,
+      password,
+    });
+
+    if (signInError) {
+      setError(signInError.message);
+      setLoading(false);
+      return;
+    }
+
+    setLoading(false);
+    router.push("/dashboard");
+    router.refresh();
+  }
+
   return (
     <div className="relative flex min-h-screen items-center justify-center overflow-hidden bg-background px-4">
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-50" />
@@ -16,9 +52,22 @@ export default function LoginPage() {
         </Link>
         <h1 className="text-center text-2xl font-bold">登录账户</h1>
         <p className="mt-2 text-center text-sm text-muted">
-          演示页面 · 表单尚未接入后端
+          登录后管理您的 API 服务
         </p>
-        <form className="mt-8 space-y-4">
+
+        {justRegistered && (
+          <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 px-4 py-2 text-sm text-green-400">
+            注册成功！请查看邮箱确认后登录（或如果已开启免确认，直接登录即可）
+          </div>
+        )}
+
+        {error && (
+          <div className="mt-4 rounded-lg border border-red-500/30 bg-red-500/10 px-4 py-2 text-sm text-red-400">
+            {error}
+          </div>
+        )}
+
+        <form className="mt-8 space-y-4" onSubmit={handleLogin}>
           <div>
             <label htmlFor="email" className="mb-1.5 block text-sm text-muted">
               邮箱
@@ -27,7 +76,10 @@ export default function LoginPage() {
               id="email"
               type="email"
               placeholder="you@company.com"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none transition-shadow focus:ring-2 focus:ring-accent/50"
+              required
             />
           </div>
           <div>
@@ -41,14 +93,18 @@ export default function LoginPage() {
               id="password"
               type="password"
               placeholder="••••••••"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
               className="w-full rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none transition-shadow focus:ring-2 focus:ring-accent/50"
+              required
             />
           </div>
           <button
-            type="button"
-            className="w-full rounded-lg bg-gradient-to-r from-accent to-accent-dark py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110"
+            type="submit"
+            disabled={loading}
+            className="w-full rounded-lg bg-gradient-to-r from-accent to-accent-dark py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
           >
-            登录
+            {loading ? "登录中..." : "登录"}
           </button>
         </form>
         <p className="mt-6 text-center text-sm text-muted">

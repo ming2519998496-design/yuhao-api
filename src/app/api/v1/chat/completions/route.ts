@@ -52,7 +52,7 @@ export async function POST(request: NextRequest) {
 
     // 第2步：解析请求
     const body = await request.json();
-    const { model, messages, stream: _requestedStream, ...rest } = body;
+    const { model, messages, ...rest } = body;
 
     if (!model) {
       return NextResponse.json(

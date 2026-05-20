@@ -1,235 +1,194 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
-import { createClient } from "@/lib/supabase";
-import { Key, LogOut, Plus, Copy, Trash2, Sparkles, Eye, EyeOff } from "lucide-react";
-import Link from "next/link";
-import type { User } from "@supabase/supabase-js";
+import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { StatCard } from "@/components/dashboard/stat-card";
+import {
+  Activity,
+  Coins,
+  Cpu,
+  TrendingUp,
+  Zap,
+} from "lucide-react";
 
-interface ApiKeyItem {
-  id: string;
-  key_prefix: string;
-  name: string;
-  balance: number;
-  total_usage: number;
-  is_active: boolean;
-  created_at: string;
-  last_used_at: string | null;
-}
+const usageByDay = [
+  { day: "周一", tokens: 42 },
+  { day: "周二", tokens: 58 },
+  { day: "周三", tokens: 35 },
+  { day: "周四", tokens: 71 },
+  { day: "周五", tokens: 64 },
+  { day: "周六", tokens: 28 },
+  { day: "周日", tokens: 45 },
+];
+
+const modelUsage = [
+  { name: "GPT-4o", percent: 38, color: "bg-accent" },
+  { name: "Claude 3.5", percent: 28, color: "bg-accent-light" },
+  { name: "DeepSeek", percent: 22, color: "bg-accent-dark" },
+  { name: "其他", percent: 12, color: "bg-slate-300" },
+];
+
+const recentRequests = [
+  {
+    time: "14:32:08",
+    model: "gpt-4o",
+    tokens: 1240,
+    cost: "0.018",
+    status: "成功",
+  },
+  {
+    time: "14:28:51",
+    model: "claude-3-5-sonnet",
+    tokens: 890,
+    cost: "0.012",
+    status: "成功",
+  },
+  {
+    time: "14:15:22",
+    model: "deepseek-chat",
+    tokens: 2100,
+    cost: "0.004",
+    status: "成功",
+  },
+  {
+    time: "13:58:04",
+    model: "gpt-4o-mini",
+    tokens: 450,
+    cost: "0.001",
+    status: "成功",
+  },
+];
 
 export default function DashboardPage() {
-  const router = useRouter();
-  const supabase = createClient();
-  const [user, setUser] = useState<User | null>(null);
-  const [keys, setKeys] = useState<ApiKeyItem[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [creating, setCreating] = useState(false);
-  const [newKey, setNewKey] = useState("");
-  const [keyName, setKeyName] = useState("");
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
-        router.push("/login");
-      } else {
-        setUser(data.user);
-        fetchKeys();
-      }
-    });
-  }, []);
-
-  async function fetchKeys() {
-    const res = await fetch("/api/keys");
-    const data = await res.json();
-    if (data.keys) setKeys(data.keys);
-    setLoading(false);
-  }
-
-  async function createKey() {
-    setCreating(true);
-    setNewKey("");
-    const res = await fetch("/api/keys", {
-      method: "POST",
-      headers: { "Content-Type": "application/json" },
-      body: JSON.stringify({ name: keyName || undefined }),
-    });
-    const data = await res.json();
-
-    if (data.key) {
-      setNewKey(data.key);
-      setKeyName("");
-      fetchKeys();
-    } else {
-      alert(data.error || "创建失败");
-    }
-    setCreating(false);
-  }
-
-  async function deleteKey(id: string) {
-    if (!confirm("确定删除此 API Key？")) return;
-    const res = await fetch(`/api/keys?id=${id}`, { method: "DELETE" });
-    const data = await res.json();
-    if (data.success) fetchKeys();
-  }
-
-  async function handleLogout() {
-    await supabase.auth.signOut();
-    router.push("/");
-    router.refresh();
-  }
-
-  function copyToClipboard(text: string) {
-    navigator.clipboard.writeText(text);
-    alert("已复制");
-  }
-
-  if (loading) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-background">
-        <p className="text-muted">加载中...</p>
-      </div>
-    );
-  }
+  const maxTokens = Math.max(...usageByDay.map((d) => d.tokens));
 
   return (
-    <div className="min-h-screen bg-background">
-      <nav className="flex items-center justify-between border-b border-border px-6 py-4">
-        <Link href="/" className="flex items-center gap-2">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-accent to-accent-dark">
-            <Sparkles className="h-4 w-4 text-white" />
-          </span>
-          <span className="text-lg font-semibold">遇好API</span>
-        </Link>
-        <div className="flex items-center gap-4">
-          <span className="text-sm text-muted">{user?.email}</span>
-          <button
-            onClick={handleLogout}
-            className="flex items-center gap-1.5 rounded-lg border border-border px-3 py-1.5 text-sm text-muted transition-colors hover:border-red-500/30 hover:text-red-400"
-          >
-            <LogOut className="h-4 w-4" />
-            退出
-          </button>
+    <DashboardShell
+      title="数据看板"
+      description="实时掌握 Token 消耗、费用与模型调用分布"
+    >
+      <div className="space-y-6">
+        <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-4">
+          <StatCard
+            title="今日调用"
+            value="1,284"
+            sub="次请求"
+            icon={Activity}
+            trend={{ value: "12.5%", up: true }}
+          />
+          <StatCard
+            title="今日 Token"
+            value="328K"
+            sub="输入 + 输出"
+            icon={Zap}
+            trend={{ value: "8.2%", up: true }}
+          />
+          <StatCard
+            title="今日消费"
+            value="¥12.46"
+            sub="按量计费"
+            icon={Coins}
+            trend={{ value: "3.1%", up: false }}
+          />
+          <StatCard
+            title="活跃模型"
+            value="6"
+            sub="近 7 日使用"
+            icon={Cpu}
+          />
         </div>
-      </nav>
 
-      <main className="mx-auto max-w-4xl px-6 py-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <h1 className="text-2xl font-bold">API Key 管理</h1>
-            <p className="mt-1 text-sm text-muted">
-              创建和管理您的 API 密钥
-            </p>
-          </div>
-        </div>
-
-        {/* 创建新 Key */}
-        <div className="mt-8 rounded-xl border border-border bg-surface-elevated/50 p-6">
-          <h2 className="text-lg font-semibold">创建新密钥</h2>
-          <div className="mt-4 flex gap-3">
-            <input
-              type="text"
-              placeholder="密钥名称（可选）"
-              value={keyName}
-              onChange={(e) => setKeyName(e.target.value)}
-              className="flex-1 rounded-lg border border-border bg-background px-4 py-2.5 text-sm outline-none focus:ring-2 focus:ring-accent/50"
-            />
-            <button
-              onClick={createKey}
-              disabled={creating}
-              className="flex items-center gap-2 rounded-lg bg-gradient-to-r from-accent to-accent-dark px-5 py-2.5 text-sm font-semibold text-white transition-all hover:brightness-110 disabled:opacity-50"
-            >
-              <Plus className="h-4 w-4" />
-              {creating ? "创建中..." : "创建"}
-            </button>
-          </div>
-
-          {/* 新创建的 Key 展示 */}
-          {newKey && (
-            <div className="mt-4 rounded-lg border border-green-500/30 bg-green-500/10 p-4">
-              <p className="text-sm font-semibold text-green-400">
-                密钥创建成功！请立即复制保存，之后不再显示。
-              </p>
-              <div className="mt-2 flex items-center gap-2">
-                <code className="flex-1 truncate rounded bg-black/20 px-3 py-2 text-sm font-mono">
-                  {newKey}
-                </code>
-                <button
-                  onClick={() => copyToClipboard(newKey)}
-                  className="flex items-center gap-1 rounded-lg border border-border px-3 py-2 text-sm text-muted hover:text-foreground"
-                >
-                  <Copy className="h-4 w-4" />
-                  复制
-                </button>
+        <div className="grid gap-6 lg:grid-cols-5">
+          <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm lg:col-span-3">
+            <div className="flex items-center justify-between">
+              <div>
+                <h2 className="font-semibold">近 7 日 Token 趋势</h2>
+                <p className="mt-1 text-xs text-muted">单位：千 Token</p>
               </div>
+              <TrendingUp className="h-5 w-5 text-accent" />
             </div>
-          )}
-        </div>
-
-        {/* Key 列表 */}
-        <div className="mt-6 space-y-3">
-          {keys.length === 0 ? (
-            <div className="rounded-xl border border-border p-8 text-center text-sm text-muted">
-              还没有 API Key，点击上方按钮创建
-            </div>
-          ) : (
-            keys.map((key) => (
-              <div
-                key={key.id}
-                className="flex items-center justify-between rounded-xl border border-border bg-surface-elevated/30 p-5"
-              >
-                <div className="min-w-0 flex-1">
-                  <div className="flex items-center gap-3">
-                    <Key className="h-4 w-4 text-accent-light shrink-0" />
-                    <span className="font-medium truncate">{key.name}</span>
-                    <code className="text-xs text-muted font-mono">
-                      {key.key_prefix}
-                    </code>
+            <div className="mt-8 flex items-end justify-between gap-2 sm:gap-4">
+              {usageByDay.map((item) => (
+                <div key={item.day} className="flex flex-1 flex-col items-center gap-2">
+                  <div className="flex h-36 w-full items-end justify-center">
+                    <div
+                      className="w-full max-w-10 rounded-t-lg bg-gradient-to-t from-accent-dark to-accent transition-all"
+                      style={{
+                        height: `${(item.tokens / maxTokens) * 100}%`,
+                      }}
+                    />
                   </div>
-                  <div className="mt-2 flex items-center gap-4 text-xs text-muted">
-                    <span>
-                      余额：<span className="text-foreground font-medium">{key.balance.toFixed(2)}</span> 元
-                    </span>
-                    <span>
-                      累计消费：<span className="text-foreground">{key.total_usage.toFixed(2)}</span> 元
-                    </span>
-                    <span className={key.is_active ? "text-green-400" : "text-red-400"}>
-                      {key.is_active ? "启用" : "禁用"}
-                    </span>
+                  <span className="text-[10px] text-muted sm:text-xs">
+                    {item.day}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+
+          <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm lg:col-span-2">
+            <h2 className="font-semibold">模型用量分布</h2>
+            <p className="mt-1 text-xs text-muted">按 Token 占比</p>
+            <div className="mt-6 space-y-4">
+              {modelUsage.map((m) => (
+                <div key={m.name}>
+                  <div className="mb-1.5 flex justify-between text-sm">
+                    <span>{m.name}</span>
+                    <span className="text-muted">{m.percent}%</span>
+                  </div>
+                  <div className="h-2 overflow-hidden rounded-full bg-surface">
+                    <div
+                      className={`h-full rounded-full ${m.color}`}
+                      style={{ width: `${m.percent}%` }}
+                    />
                   </div>
                 </div>
-                <button
-                  onClick={() => deleteKey(key.id)}
-                  className="ml-4 rounded-lg border border-border p-2 text-muted transition-colors hover:border-red-500/30 hover:text-red-400"
-                >
-                  <Trash2 className="h-4 w-4" />
-                </button>
-              </div>
-            ))
-          )}
-        </div>
-
-        {/* 使用说明 */}
-        <div className="mt-10 rounded-xl border border-border bg-surface-elevated/30 p-6">
-          <h2 className="text-lg font-semibold">如何使用</h2>
-          <div className="mt-4 space-y-3 text-sm text-muted">
-            <p>在代码中将 OpenAI SDK 的 base URL 指向遇好API：</p>
-            <pre className="rounded-lg bg-black/20 p-4 text-xs font-mono text-foreground">
-{`import OpenAI from "openai";
-
-const client = new OpenAI({
-  baseURL: "https://yuhouapi.com/v1",
-  apiKey: "你的 API Key",
-});
-
-const res = await client.chat.completions.create({
-  model: "gpt-4o-mini",
-  messages: [{ role: "user", content: "你好" }],
-});
-`}            </pre>
+              ))}
+            </div>
           </div>
         </div>
-      </main>
-    </div>
+
+        <div className="rounded-2xl border border-border bg-surface-elevated shadow-sm overflow-hidden">
+          <div className="border-b border-border px-6 py-4">
+            <h2 className="font-semibold">最近请求</h2>
+            <p className="mt-1 text-xs text-muted">实时更新，费用透明可查</p>
+          </div>
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="border-b border-border bg-surface/80 text-left text-xs text-muted">
+                  <th className="px-6 py-3 font-medium">时间</th>
+                  <th className="px-6 py-3 font-medium">模型</th>
+                  <th className="px-6 py-3 font-medium">Token</th>
+                  <th className="px-6 py-3 font-medium">费用</th>
+                  <th className="px-6 py-3 font-medium">状态</th>
+                </tr>
+              </thead>
+              <tbody>
+                {recentRequests.map((row) => (
+                  <tr
+                    key={row.time + row.model}
+                    className="border-b border-border/60 last:border-0 hover:bg-accent/5"
+                  >
+                    <td className="px-6 py-3.5 font-mono text-xs text-muted">
+                      {row.time}
+                    </td>
+                    <td className="px-6 py-3.5 font-mono text-xs">
+                      {row.model}
+                    </td>
+                    <td className="px-6 py-3.5">{row.tokens.toLocaleString()}</td>
+                    <td className="px-6 py-3.5">¥{row.cost}</td>
+                    <td className="px-6 py-3.5">
+                      <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs text-emerald-700">
+                        {row.status}
+                      </span>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </DashboardShell>
   );
 }

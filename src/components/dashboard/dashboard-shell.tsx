@@ -6,21 +6,31 @@ import {
   LayoutDashboard,
   LogOut,
   Menu,
-  Sparkles,
+  Gift,
+  LifeBuoy,
+  Megaphone,
+  Settings,
+  Tags,
   Terminal,
   X,
 } from "lucide-react";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
+import { SiteLogo } from "@/components/brand/site-logo";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
 import type { User } from "@supabase/supabase-js";
 
 const navItems = [
   { href: "/dashboard", label: "数据看板", icon: LayoutDashboard },
-  { href: "/console", label: "控制台", icon: Terminal },
-  { href: "/recharge", label: "充值", icon: CreditCard },
+  { href: "/console", label: "令牌管理", icon: Terminal },
+  { href: "/pricing", label: "价格说明", icon: Tags },
+  { href: "/recharge", label: "我的钱包", icon: CreditCard },
+  { href: "/dashboard/referral", label: "邀请奖励", icon: Gift },
+  { href: "/dashboard/settings", label: "账户设置", icon: Settings },
+  { href: "/dashboard/announcements", label: "公告通知", icon: Megaphone },
+  { href: "/dashboard/support", label: "联系客服", icon: LifeBuoy },
 ];
 
 export function DashboardShell({
@@ -34,22 +44,68 @@ export function DashboardShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
+  const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [balance] = useState(128.5);
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [balance, setBalance] = useState(0);
 
   useEffect(() => {
-    supabase.auth.getUser().then(({ data }) => {
-      if (!data.user) {
+    async function init() {
+      const {
+        data: { user: u },
+      } = await supabase.auth.getUser();
+      if (!u) {
         router.push("/login");
-      } else {
-        setUser(data.user);
+        return;
+      }
+      setUser(u);
+      const [syncRes, statsRes] = await Promise.all([
+        fetch("/api/auth/sync-profile", { method: "POST" }),
+        fetch("/api/dashboard/stats"),
+      ]);
+      const syncData = await syncRes.json().catch(() => ({}));
+      const statsData = await statsRes.json().catch(() => ({}));
+
+      if (syncData.frozen || syncRes.status === 403) {
+        await supabase.auth.signOut();
+        router.push("/login?frozen=1");
+        return;
+      }
+
+      setIsAdmin(!!syncData.isAdmin);
+      if (typeof statsData.balance === "number") {
+        setBalance(statsData.balance);
       }
       setLoading(false);
-    });
-  }, [router, supabase.auth]);
+    }
+    init();
+  }, [router, supabase]);
+
+  useEffect(() => {
+    if (loading) return;
+    fetch("/api/dashboard/stats")
+      .then((r) => r.json())
+      .then((d) => {
+        if (typeof d.balance === "number") setBalance(d.balance);
+      })
+      .catch(() => {});
+  }, [pathname, loading]);
+
+  useEffect(() => {
+    if (loading) return;
+    function refreshBalance() {
+      fetch("/api/dashboard/stats")
+        .then((r) => r.json())
+        .then((d) => {
+          if (typeof d.balance === "number") setBalance(d.balance);
+        })
+        .catch(() => {});
+    }
+    window.addEventListener("focus", refreshBalance);
+    return () => window.removeEventListener("focus", refreshBalance);
+  }, [loading]);
 
   async function handleLogout() {
     await supabase.auth.signOut();
@@ -67,18 +123,13 @@ export function DashboardShell({
 
   const sidebar = (
     <>
-      <Link href="/" className="flex items-center gap-2.5 px-2">
-        <span className="flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-dark shadow-lg shadow-accent/20">
-          <Sparkles className="h-4 w-4 text-white" />
-        </span>
-        <span className="text-lg font-semibold">
-          遇好<span className="text-accent-light">API</span>
-        </span>
-      </Link>
+      <SiteLogo size="sm" className="px-2" />
 
       <nav className="mt-8 space-y-1">
         {navItems.map((item) => {
-          const active = pathname === item.href;
+          const active =
+            pathname === item.href ||
+            (item.href !== "/dashboard" && pathname.startsWith(item.href));
           return (
             <Link
               key={item.href}
@@ -100,6 +151,15 @@ export function DashboardShell({
         })}
       </nav>
 
+      {isAdmin && (
+        <Link
+          href="/admin"
+          onClick={() => setMobileOpen(false)}
+          className="mb-3 flex items-center justify-center gap-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2.5 text-sm font-medium text-amber-800"
+        >
+          管理后台
+        </Link>
+      )}
       <div className="mt-auto rounded-xl border border-border bg-surface p-4">
         <div className="flex items-center gap-2 text-xs text-muted">
           <BarChart3 className="h-3.5 w-3.5 text-accent" />
@@ -171,7 +231,7 @@ export function DashboardShell({
             </div>
             <div className="flex items-center gap-3">
               <span className="hidden text-sm text-muted sm:block">
-                {user?.email}
+                {user?.email ?? ""}
               </span>
               <Link
                 href="/"

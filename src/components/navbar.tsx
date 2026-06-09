@@ -1,85 +1,138 @@
 "use client";
 
+import { createClient } from "@/lib/supabase";
 import { motion } from "framer-motion";
-import { Menu, Sparkles, X } from "lucide-react";
+import { SiteLogo } from "@/components/brand/site-logo";
+import { LogOut, Menu, X } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useState } from "react";
-import { cn } from "@/lib/utils";
-
-const navLinks = [
-  { href: "/", label: "首页" },
-  { href: "/console", label: "控制台" },
-  { href: "/docs", label: "使用教程" },
-  { href: "/support", label: "在线客服" },
-];
+import { useRouter } from "next/navigation";
+import { useEffect, useMemo, useState } from "react";
+import type { User } from "@supabase/supabase-js";
 
 export function Navbar() {
-  const [scrolled, setScrolled] = useState(false);
+  const router = useRouter();
+  const supabase = useMemo(() => createClient(), []);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
 
   useEffect(() => {
-    const onScroll = () => setScrolled(window.scrollY > 24);
-    onScroll();
-    window.addEventListener("scroll", onScroll, { passive: true });
-    return () => window.removeEventListener("scroll", onScroll);
-  }, []);
+    supabase.auth.getUser().then(({ data }) => {
+      setUser(data.user);
+      setAuthReady(true);
+    });
 
-  return (
-    <motion.header
-      initial={{ y: -20, opacity: 0 }}
-      animate={{ y: 0, opacity: 1 }}
-      transition={{ duration: 0.5, ease: "easeOut" }}
-      className={cn(
-        "fixed inset-x-0 top-0 z-50 transition-all duration-300",
-        scrolled ? "glass py-3 shadow-lg shadow-accent/10" : "py-5"
-      )}
-    >
-      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 sm:px-6 lg:px-8">
-        <Link href="/" className="group flex items-center gap-2.5">
-          <span className="relative flex h-9 w-9 items-center justify-center rounded-xl bg-gradient-to-br from-accent to-accent-dark shadow-lg shadow-accent/30">
-            <Sparkles className="h-4 w-4 text-white" />
-          </span>
-          <span className="text-lg font-semibold tracking-tight">
-            遇好<span className="text-accent-light">API</span>
-          </span>
-        </Link>
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setUser(session?.user ?? null);
+      setAuthReady(true);
+    });
 
-        <motion.div
-          className="hidden items-center gap-6 lg:gap-8 md:flex"
-          initial={false}
-        >
-          {navLinks.map((link) => (
-            <Link
-              key={link.href}
-              href={link.href}
-              className="text-sm text-muted transition-colors hover:text-foreground"
-            >
-              {link.label}
-            </Link>
-          ))}
-        </motion.div>
+    return () => subscription.unsubscribe();
+  }, [supabase]);
 
-        <motion.div
-          className="hidden items-center gap-3 md:flex"
-          initial={false}
-        >
+  async function handleLogout() {
+    await supabase.auth.signOut();
+    setMobileOpen(false);
+    router.refresh();
+  }
+
+  const emailLabel = user?.email ?? "";
+
+  const desktopAuth = !authReady ? (
+    <div className="hidden h-9 w-32 sm:block" aria-hidden />
+  ) : user ? (
+    <div className="hidden items-center gap-2 sm:flex">
+      <Link
+        href="/dashboard"
+        className="max-w-[200px] truncate rounded-full px-4 py-2 text-sm text-muted transition-colors hover:bg-white/60 hover:text-foreground"
+        title={emailLabel}
+      >
+        {emailLabel}
+      </Link>
+      <button
+        type="button"
+        onClick={() => void handleLogout()}
+        className="inline-flex items-center gap-1.5 rounded-full border border-border/80 bg-white/70 px-4 py-2 text-sm text-muted transition-colors hover:border-red-200 hover:text-red-600"
+      >
+        <LogOut className="h-4 w-4" />
+        退出
+      </button>
+    </div>
+  ) : (
+    <div className="hidden items-center gap-2 sm:flex">
+      <Link
+        href="/login"
+        className="rounded-full px-4 py-2 text-sm text-muted transition-colors hover:text-foreground"
+      >
+        登录
+      </Link>
+      <Link
+        href="/register"
+        className="rounded-full bg-foreground px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90"
+      >
+        注册
+      </Link>
+    </div>
+  );
+
+  const mobileAuth = authReady && (
+    <div className="border-t border-border/60 bg-white/90 px-4 py-4 backdrop-blur-md sm:hidden">
+      {user ? (
+        <>
+          <Link
+            href="/dashboard"
+            className="block truncate rounded-lg px-3 py-2.5 text-sm font-medium text-foreground"
+            onClick={() => setMobileOpen(false)}
+          >
+            {emailLabel}
+          </Link>
+          <button
+            type="button"
+            onClick={() => void handleLogout()}
+            className="mt-2 flex w-full items-center justify-center gap-2 rounded-lg border border-border py-2.5 text-sm text-muted hover:text-red-600"
+          >
+            <LogOut className="h-4 w-4" />
+            退出
+          </button>
+        </>
+      ) : (
+        <>
           <Link
             href="/login"
-            className="rounded-lg px-4 py-2 text-sm text-muted transition-colors hover:text-foreground"
+            className="block rounded-lg px-3 py-2.5 text-sm text-muted"
+            onClick={() => setMobileOpen(false)}
           >
             登录
           </Link>
           <Link
             href="/register"
-            className="rounded-lg bg-gradient-to-r from-accent to-accent-dark px-4 py-2 text-sm font-medium text-white shadow-lg shadow-accent/30 transition-all hover:shadow-accent/50 hover:brightness-110"
+            className="mt-2 block rounded-full bg-foreground py-2.5 text-center text-sm font-medium text-white"
+            onClick={() => setMobileOpen(false)}
           >
-            免费注册
+            注册
           </Link>
-        </motion.div>
+        </>
+      )}
+    </div>
+  );
+
+  return (
+    <motion.header
+      initial={{ y: -12, opacity: 0 }}
+      animate={{ y: 0, opacity: 1 }}
+      transition={{ duration: 0.4 }}
+      className="fixed inset-x-0 top-0 z-50"
+    >
+      <nav className="mx-auto flex max-w-6xl items-center justify-between px-4 py-5 sm:px-6 lg:px-8">
+        <SiteLogo size="md" />
+
+        {desktopAuth}
 
         <button
           type="button"
-          className="rounded-lg p-2 text-muted transition-colors hover:bg-accent/10 hover:text-foreground md:hidden"
+          className="rounded-lg p-2 text-muted hover:bg-white/60 sm:hidden"
           onClick={() => setMobileOpen((o) => !o)}
           aria-label={mobileOpen ? "关闭菜单" : "打开菜单"}
         >
@@ -87,46 +140,7 @@ export function Navbar() {
         </button>
       </nav>
 
-      {mobileOpen && (
-        <motion.div
-          initial={{ opacity: 0, height: 0 }}
-          animate={{ opacity: 1, height: "auto" }}
-          exit={{ opacity: 0, height: 0 }}
-          className="glass border-t border-border md:hidden"
-        >
-          <motion.div
-            className="flex flex-col gap-1 px-4 py-4"
-            initial={false}
-          >
-            {navLinks.map((link) => (
-              <Link
-                key={link.href}
-                href={link.href}
-                className="rounded-lg px-3 py-2.5 text-sm text-muted hover:bg-accent/10 hover:text-foreground"
-                onClick={() => setMobileOpen(false)}
-              >
-                {link.label}
-              </Link>
-            ))}
-            <div className="mt-3 flex flex-col gap-2 border-t border-border pt-3">
-              <Link
-                href="/login"
-                className="rounded-lg px-3 py-2.5 text-center text-sm text-muted hover:bg-accent/10"
-                onClick={() => setMobileOpen(false)}
-              >
-                登录
-              </Link>
-              <Link
-                href="/register"
-                className="rounded-lg bg-gradient-to-r from-accent to-accent-dark py-2.5 text-center text-sm font-medium text-white"
-                onClick={() => setMobileOpen(false)}
-              >
-                免费注册
-              </Link>
-            </div>
-          </motion.div>
-        </motion.div>
-      )}
+      {mobileOpen && mobileAuth}
     </motion.header>
   );
 }

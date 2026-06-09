@@ -1,0 +1,329 @@
+{
+  "formula": "官方 USD × 7.2 × 加价（经济15% / 标准20% / 旗舰18% / 图像按次30%）",
+  "generatedAt": "2026-06-08T07:27:39.470Z",
+  "models": [
+    {
+      "modelId": "gpt-4o",
+      "name": "GPT-4o",
+      "inputPerMillion": 21.24,
+      "outputPerMillion": 84.96,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-4o-mini",
+      "name": "GPT-4o Mini",
+      "inputPerMillion": 1.3,
+      "outputPerMillion": 5.18,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-4.1-nano",
+      "name": "GPT-4.1 Nano",
+      "inputPerMillion": 0.86,
+      "outputPerMillion": 3.46,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-4.1-mini",
+      "name": "GPT-4.1 Mini",
+      "inputPerMillion": 3.46,
+      "outputPerMillion": 13.82,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-4.1",
+      "name": "GPT-4.1",
+      "inputPerMillion": 16.99,
+      "outputPerMillion": 67.97,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5-nano",
+      "name": "GPT-5 Nano",
+      "inputPerMillion": 0.86,
+      "outputPerMillion": 3.46,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-5-mini",
+      "name": "GPT-5 Mini",
+      "inputPerMillion": 2.16,
+      "outputPerMillion": 8.64,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-5",
+      "name": "GPT-5",
+      "inputPerMillion": 21.24,
+      "outputPerMillion": 84.96,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5-pro",
+      "name": "GPT-5 Pro",
+      "inputPerMillion": 42.48,
+      "outputPerMillion": 169.92,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.1",
+      "name": "GPT-5.1",
+      "inputPerMillion": 23.36,
+      "outputPerMillion": 93.46,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.2",
+      "name": "GPT-5.2",
+      "inputPerMillion": 24.21,
+      "outputPerMillion": 96.85,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.2-pro",
+      "name": "GPT-5.2 Pro",
+      "inputPerMillion": 46.73,
+      "outputPerMillion": 186.91,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.4-nano",
+      "name": "GPT-5.4 Nano",
+      "inputPerMillion": 1.04,
+      "outputPerMillion": 4.15,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-5.4-mini",
+      "name": "GPT-5.4 Mini",
+      "inputPerMillion": 2.59,
+      "outputPerMillion": 10.37,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gpt-5.4",
+      "name": "GPT-5.4",
+      "inputPerMillion": 23.79,
+      "outputPerMillion": 95.16,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.4-pro",
+      "name": "GPT-5.4 Pro",
+      "inputPerMillion": 46.73,
+      "outputPerMillion": 186.91,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.5",
+      "name": "GPT-5.5",
+      "inputPerMillion": 25.49,
+      "outputPerMillion": 101.95,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-5.5-pro",
+      "name": "GPT-5.5 Pro",
+      "inputPerMillion": 50.98,
+      "outputPerMillion": 203.9,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gemini-2.5-flash",
+      "name": "Gemini 2.5 Flash",
+      "inputPerMillion": 1.3,
+      "outputPerMillion": 5.18,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gemini-2.5-flash-lite",
+      "name": "Gemini 2.5 Flash-Lite",
+      "inputPerMillion": 0.83,
+      "outputPerMillion": 3.31,
+      "tier": "economy"
+    },
+    {
+      "modelId": "gemini-2.5-pro",
+      "name": "Gemini 2.5 Pro",
+      "inputPerMillion": 10.62,
+      "outputPerMillion": 84.96,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gemini-3-flash-preview",
+      "name": "Gemini 3 Flash Preview",
+      "inputPerMillion": 1.73,
+      "outputPerMillion": 6.91,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gemini-3-pro-preview",
+      "name": "Gemini 3 Pro Preview",
+      "inputPerMillion": 12.74,
+      "outputPerMillion": 101.95,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gemini-3.1-pro-preview",
+      "name": "Gemini 3.1 Pro Preview",
+      "inputPerMillion": 13.59,
+      "outputPerMillion": 110.45,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gemini-3.1-flash-lite-preview",
+      "name": "Gemini 3.1 Flash Lite Preview",
+      "inputPerMillion": 0.83,
+      "outputPerMillion": 3.31,
+      "tier": "economy"
+    },
+    {
+      "modelId": "gemini-3.1-flash-lite",
+      "name": "Gemini 3.1 Flash Lite",
+      "inputPerMillion": 0.83,
+      "outputPerMillion": 3.31,
+      "tier": "economy"
+    },
+    {
+      "modelId": "gemini-3.5-flash",
+      "name": "Gemini 3.5 Flash",
+      "inputPerMillion": 2.16,
+      "outputPerMillion": 8.64,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gemini-2.5-flash-image",
+      "name": "Gemini 2.5 Flash Image",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.37,
+      "tier": "image"
+    },
+    {
+      "modelId": "gemini-3-pro-image-preview",
+      "name": "Gemini 3 Pro Image Preview",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 1.25,
+      "tier": "image"
+    },
+    {
+      "modelId": "gemini-3-pro-image",
+      "name": "Gemini 3 Pro Image",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 1.25,
+      "tier": "image"
+    },
+    {
+      "modelId": "nano-banana-pro-preview",
+      "name": "Nano Banana Pro Preview",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 1.25,
+      "tier": "image"
+    },
+    {
+      "modelId": "gemini-3.1-flash-image-preview",
+      "name": "Gemini 3.1 Flash Image Preview",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.63,
+      "tier": "image"
+    },
+    {
+      "modelId": "gemini-3.1-flash-image",
+      "name": "Gemini 3.1 Flash Image",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.63,
+      "tier": "image"
+    },
+    {
+      "modelId": "imagen-4.0-generate-001",
+      "name": "Imagen 4",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.37,
+      "tier": "image"
+    },
+    {
+      "modelId": "imagen-4.0-ultra-generate-001",
+      "name": "Imagen 4 Ultra",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.56,
+      "tier": "image"
+    },
+    {
+      "modelId": "imagen-4.0-fast-generate-001",
+      "name": "Imagen 4 Fast",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.19,
+      "tier": "image"
+    },
+    {
+      "modelId": "veo-2.0-generate-001",
+      "name": "Veo 2",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 26.21,
+      "tier": "image"
+    },
+    {
+      "modelId": "veo-3.0-generate-001",
+      "name": "Veo 3",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 29.95,
+      "tier": "image"
+    },
+    {
+      "modelId": "veo-3.0-fast-generate-001",
+      "name": "Veo 3 Fast",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 7.49,
+      "tier": "image"
+    },
+    {
+      "modelId": "veo-3.1-generate-preview",
+      "name": "Veo 3.1 Preview",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 29.95,
+      "tier": "image"
+    },
+    {
+      "modelId": "veo-3.1-fast-generate-preview",
+      "name": "Veo 3.1 Fast Preview",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 7.49,
+      "tier": "image"
+    },
+    {
+      "modelId": "veo-3.1-lite-generate-preview",
+      "name": "Veo 3.1 Lite Preview",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 3.74,
+      "tier": "image"
+    },
+    {
+      "modelId": "deepseek-v4-flash",
+      "name": "DeepSeek V4 Flash",
+      "inputPerMillion": 1.16,
+      "outputPerMillion": 2.32,
+      "tier": "economy"
+    },
+    {
+      "modelId": "deepseek-v4-pro",
+      "name": "DeepSeek V4 Pro",
+      "inputPerMillion": 3.7,
+      "outputPerMillion": 7.39,
+      "tier": "flagship"
+    }
+  ]
+}

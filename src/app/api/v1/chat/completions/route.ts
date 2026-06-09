@@ -1,23 +1,39 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
-import { getModelConfig } from "@/lib/models";
+import {
+  DEFAULT_MAX_COMPLETION_TOKENS,
+  executeWithBilling,
+  normalizeUsage,
+  resolveMaxCompletionTokens,
+} from "@/lib/billing-reserve";
+import {
+  DEFAULT_MODEL_ID,
+  isModelAllowedForKey,
+  resolveAllowedCategoryIds,
+} from "@/lib/api-key-models";
+import {
+  isMissingModelColumnsError,
+  KEY_AUTH_SELECT_FULL,
+  KEY_AUTH_SELECT_LEGACY,
+} from "@/lib/api-keys-db";
+import { getEffectiveModelConfig } from "@/lib/model-pricing-store";
+import { isChatModel, type ModelPricing } from "@/lib/models";
+import { resolveUpstreamApiKey } from "@/lib/upstream-keys-store";
+import { upstreamFetch } from "@/lib/upstream-fetch";
 import { createAdminClient } from "@/lib/supabase-admin";
+import { isUserFrozen } from "@/lib/account-frozen";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-const PRICING: Record<string, { input: number; output: number }> = {
-  "gpt-4o": { input: 18, output: 72 },
-  "gpt-4o-mini": { input: 1.1, output: 4.4 },
-  "deepseek-chat": { input: 0.5, output: 2 },
-  "claude-sonnet-4-20250514": { input: 22, output: 88 },
-  "gemini-2.5-flash": { input: 0.15, output: 0.6 },
-  "gemini-2.5-pro": { input: 1.25, output: 10 },
+type ApiKeyRecord = {
+  id: string;
+  user_id: string;
+  balance: number;
 };
 
 export async function POST(request: NextRequest) {
   try {
-    // 第1步：验证用户 API Key
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       return NextResponse.json(
@@ -30,11 +46,22 @@ export async function POST(request: NextRequest) {
     const keyHash = crypto.createHash("sha256").update(rawKey).digest("hex");
 
     const admin = createAdminClient();
-    const { data: apiKey, error: keyError } = await admin
+    let keyResult = await admin
       .from("api_keys")
-      .select("id, user_id, balance, is_active")
+      .select(KEY_AUTH_SELECT_FULL)
       .eq("key_hash", keyHash)
       .single();
+
+    if (keyResult.error && isMissingModelColumnsError(keyResult.error.message)) {
+      keyResult = await admin
+        .from("api_keys")
+        .select(KEY_AUTH_SELECT_LEGACY)
+        .eq("key_hash", keyHash)
+        .single();
+    }
+
+    const apiKey = keyResult.data;
+    const keyError = keyResult.error;
 
     if (keyError || !apiKey) {
       return NextResponse.json(
@@ -50,57 +77,129 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 第2步：解析请求
-    const body = await request.json();
-    const { model, messages, ...rest } = body;
-
-    if (!model) {
+    if (await isUserFrozen(apiKey.user_id)) {
       return NextResponse.json(
-        { error: { message: "请指定模型 (model)", type: "invalid_request_error" } },
+        {
+          error: {
+            message: "账户已被冻结，API 调用已暂停",
+            type: "auth_error",
+          },
+        },
+        { status: 403 }
+      );
+    }
+
+    const body = await request.json();
+    const { model: requestedModel, messages, ...rest } = body;
+    const allowedCategories = resolveAllowedCategoryIds(
+      apiKey.allowed_category_ids as string[] | undefined
+    );
+    const modelId =
+      typeof requestedModel === "string" && requestedModel.trim()
+        ? requestedModel.trim()
+        : (apiKey.default_model_id as string | undefined) ?? DEFAULT_MODEL_ID;
+
+    if (!modelId) {
+      return NextResponse.json(
+        {
+          error: {
+            message: "请指定模型 (model)，或在令牌管理创建 Key 时设置默认模型",
+            type: "invalid_request_error",
+          },
+        },
         { status: 400 }
       );
     }
 
-    const modelConfig = getModelConfig(model);
+    const modelConfig = await getEffectiveModelConfig(modelId);
     if (!modelConfig) {
       return NextResponse.json(
-        { error: { message: `不支持的模型: ${model}`, type: "invalid_request_error" } },
+        {
+          error: {
+            message: `不支持的模型: ${modelId}`,
+            type: "invalid_request_error",
+          },
+        },
         { status: 400 }
       );
     }
 
-    // 第3步：余额检查
-    const pricing = PRICING[model];
-    if (pricing) {
-      const minCost = pricing.input * (100 / 1_000_000);
-      if (apiKey.balance < minCost) {
-        return NextResponse.json(
-          { error: { message: "额度不足，请充值", type: "insufficient_quota" } },
-          { status: 402 }
-        );
-      }
+    if (!isModelAllowedForKey(modelId, allowedCategories)) {
+      return NextResponse.json(
+        {
+          error: {
+            message: `此 API Key 无权调用模型 ${modelId}，请使用已授权分组下的模型`,
+            type: "permission_error",
+          },
+        },
+        { status: 403 }
+      );
     }
 
-    // 第4步：获取上游 API Key
-    const apiKeyValue = process.env[`${modelConfig.provider.toUpperCase()}_API_KEY`];
+    if (!isChatModel(modelConfig)) {
+      return NextResponse.json(
+        {
+          error: {
+            message: `模型 ${modelId} 为图像/视频生成，请使用 POST /api/v1/generations`,
+            type: "invalid_request_error",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
+    const pricing = modelConfig.pricing;
+    const apiKeyValue = await resolveUpstreamApiKey(modelConfig.provider);
     if (!apiKeyValue) {
       return NextResponse.json(
-        { error: { message: `服务商 ${modelConfig.provider} 未配置`, type: "server_error" } },
+        {
+          error: {
+            message: `服务商 ${modelConfig.provider} 未配置`,
+            type: "server_error",
+          },
+        },
         { status: 500 }
       );
     }
 
-    // 第5步：按 provider 分发
+    const apiKeyRecord: ApiKeyRecord = {
+      id: apiKey.id,
+      user_id: apiKey.user_id,
+      balance: Number(apiKey.balance),
+    };
+
     const provider = modelConfig.provider;
 
     if (provider === "anthropic") {
-      return handleAnthropicProxy(modelConfig, body, pricing, apiKey, admin, apiKeyValue);
+      return handleAnthropicProxy(
+        modelConfig,
+        body,
+        pricing,
+        apiKeyRecord,
+        admin,
+        apiKeyValue
+      );
     }
     if (provider === "google") {
-      return handleGeminiProxy(modelConfig, messages, pricing, apiKey, admin, apiKeyValue);
+      return handleGeminiProxy(
+        modelConfig,
+        messages,
+        pricing,
+        apiKeyRecord,
+        admin,
+        apiKeyValue
+      );
     }
 
-    return handleOpenAIProxy(modelConfig, messages, rest, apiKeyValue, pricing, apiKey, admin);
+    return handleOpenAIProxy(
+      modelConfig,
+      messages,
+      rest,
+      apiKeyValue,
+      pricing,
+      apiKeyRecord,
+      admin
+    );
   } catch (err: unknown) {
     const message = err instanceof Error ? err.message : "未知错误";
     return NextResponse.json(
@@ -110,142 +209,282 @@ export async function POST(request: NextRequest) {
   }
 }
 
+async function respondWithBilling(
+  result: Awaited<ReturnType<typeof executeWithBilling>>
+) {
+  if (!result.ok) {
+    return result.response;
+  }
+
+  const headers = new Headers();
+  if (result.billing) {
+    headers.set(
+      "X-Yuhao-Billing-Cost-Cny",
+      result.billing.costCny.toFixed(2)
+    );
+    headers.set(
+      "X-Yuhao-Billing-Balance-Cny",
+      result.billing.balanceCny.toFixed(2)
+    );
+  }
+
+  return NextResponse.json(result.data, {
+    status: result.status,
+    headers,
+  });
+}
+
 // ================= OpenAI / DeepSeek 兼容 =================
 async function handleOpenAIProxy(
   modelConfig: { id: string; baseUrl: string },
   messages: unknown,
   rest: Record<string, unknown>,
   apiKeyValue: string,
-  pricing: { input: number; output: number } | undefined,
-  apiKeyRecord: { id: string; user_id: string; balance: number },
+  pricing: ModelPricing,
+  apiKeyRecord: ApiKeyRecord,
   admin: ReturnType<typeof createAdminClient>
 ) {
-  const url = `${modelConfig.baseUrl}/chat/completions`;
+  const maxCompletionTokens = resolveMaxCompletionTokens(rest);
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${apiKeyValue}`,
-    },
-    body: JSON.stringify({
-      model: modelConfig.id,
-      messages,
-      stream: false,
-      ...rest,
-    }),
-  });
+  const result = await executeWithBilling(
+    admin,
+    apiKeyRecord,
+    modelConfig.id,
+    pricing,
+    { messages, maxCompletionTokens },
+    async () => {
+      const url = `${modelConfig.baseUrl}/chat/completions`;
+      let response: Response;
+      try {
+        response = await upstreamFetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKeyValue}`,
+          },
+          body: JSON.stringify({
+            model: modelConfig.id,
+            messages,
+            stream: false,
+            ...rest,
+          }),
+        });
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : "无法连接 OpenAI 上游";
+        return {
+          ok: false,
+          status: 502,
+          data: {
+            error: {
+              message: `OpenAI 网络请求失败：${msg}（请检查服务器能否访问 api.openai.com，或上游 Key 是否有效）`,
+              type: "upstream_error",
+            },
+          },
+        };
+      }
 
-  const data = await response.json();
+      const rawText = await response.text();
+      let data: Record<string, unknown> = {};
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText) as Record<string, unknown>;
+        } catch {
+          return {
+            ok: false,
+            status: response.status || 502,
+            data: {
+              error: {
+                message: `OpenAI 返回异常响应（HTTP ${response.status}）`,
+                type: "upstream_error",
+              },
+            },
+          };
+        }
+      }
 
-  if (response.ok && data.usage && pricing) {
-    try {
-      await deductAndLog(admin, apiKeyRecord, modelConfig.id, data.usage, pricing);
-    } catch (e) {
-      console.error("扣费失败:", e);
+      const usage =
+        response.ok && data.usage
+          ? normalizeUsage(data.usage as Record<string, unknown>)
+          : undefined;
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        data,
+        usage,
+      };
     }
-  }
+  );
 
-  return NextResponse.json(data, { status: response.status });
+  return respondWithBilling(result);
 }
 
 // ================= Anthropic / Claude =================
 async function handleAnthropicProxy(
   modelConfig: { id: string; baseUrl: string },
   body: Record<string, unknown>,
-  pricing: { input: number; output: number } | undefined,
-  apiKeyRecord: { id: string; user_id: string; balance: number },
+  pricing: ModelPricing,
+  apiKeyRecord: ApiKeyRecord,
   admin: ReturnType<typeof createAdminClient>,
   apiKeyValue: string
 ) {
-  const url = `${modelConfig.baseUrl}/messages`;
-
   const { messages, system, max_tokens, ...rest } = body as {
     messages?: unknown[];
     system?: string;
     max_tokens?: number;
   };
 
-  const anthropicBody: Record<string, unknown> = {
-    model: modelConfig.id,
-    messages,
-    max_tokens: max_tokens || 4096,
-    ...rest,
-  };
+  const maxCompletionTokens =
+    typeof max_tokens === "number" && max_tokens > 0
+      ? Math.min(max_tokens, 8192)
+      : DEFAULT_MAX_COMPLETION_TOKENS;
 
-  if (system) anthropicBody.system = system;
+  const result = await executeWithBilling(
+    admin,
+    apiKeyRecord,
+    modelConfig.id,
+    pricing,
+    { messages, maxCompletionTokens },
+    async () => {
+      const url = `${modelConfig.baseUrl}/messages`;
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      "x-api-key": apiKeyValue,
-      "anthropic-version": "2023-06-01",
-    },
-    body: JSON.stringify(anthropicBody),
-  });
+      const anthropicBody: Record<string, unknown> = {
+        model: modelConfig.id,
+        messages,
+        max_tokens: maxCompletionTokens,
+        ...rest,
+      };
 
-  const data = await response.json();
+      if (system) anthropicBody.system = system;
 
-  if (response.ok && data.usage && pricing) {
-    try {
-      await deductAndLog(admin, apiKeyRecord, modelConfig.id, data.usage, pricing);
-    } catch (e) {
-      console.error("扣费失败:", e);
+      const response = await upstreamFetch(url, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          "x-api-key": apiKeyValue,
+          "anthropic-version": "2023-06-01",
+        },
+        body: JSON.stringify(anthropicBody),
+      });
+
+      const data = await response.json();
+      const usage =
+        response.ok && data.usage
+          ? normalizeUsage(data.usage as Record<string, unknown>)
+          : undefined;
+
+      return {
+        ok: response.ok,
+        status: response.status,
+        data,
+        usage,
+      };
     }
-  }
+  );
 
-  return NextResponse.json(data, { status: response.status });
+  return respondWithBilling(result);
 }
 
 // ================= Gemini =================
 async function handleGeminiProxy(
   modelConfig: { id: string; baseUrl: string },
   messages: unknown,
-  pricing: { input: number; output: number } | undefined,
-  apiKeyRecord: { id: string; user_id: string; balance: number },
+  pricing: ModelPricing,
+  apiKeyRecord: ApiKeyRecord,
   admin: ReturnType<typeof createAdminClient>,
   apiKeyValue: string
 ) {
-  // Gemini 的 API 格式跟 OpenAI 不同，需要转换
-  // 将 OpenAI 格式的 messages 转为 Gemini 格式
-  const geminiContents = convertMessagesToGemini(messages as Array<{ role: string; content: string }>);
+  const maxCompletionTokens = DEFAULT_MAX_COMPLETION_TOKENS;
 
-  const url = `${modelConfig.baseUrl}/models/${modelConfig.id}:generateContent?key=${apiKeyValue}`;
+  const result = await executeWithBilling(
+    admin,
+    apiKeyRecord,
+    modelConfig.id,
+    pricing,
+    { messages, maxCompletionTokens },
+    async () => {
+      const geminiContents = convertMessagesToGemini(
+        messages as Array<{ role: string; content: string }>
+      );
 
-  const response = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify({
-      contents: geminiContents,
-      generationConfig: {
-        temperature: 0.7,
-        maxOutputTokens: 4096,
-      },
-    }),
-  });
+      const url = `${modelConfig.baseUrl}/models/${modelConfig.id}:generateContent?key=${apiKeyValue}`;
 
-  const data = await response.json();
+      let response: Response;
+      try {
+        response = await upstreamFetch(url, {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            contents: geminiContents,
+            generationConfig: {
+              temperature: 0.7,
+              maxOutputTokens: maxCompletionTokens,
+            },
+          }),
+        });
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : "无法连接 Google 上游";
+        return {
+          ok: false,
+          status: 502,
+          data: {
+            error: {
+              message: `Google 网络请求失败：${msg}（请检查 HTTPS_PROXY 或 GOOGLE_BASE_URL）`,
+              type: "upstream_error",
+            },
+          },
+        };
+      }
 
-  if (!response.ok) {
-    return NextResponse.json(
-      { error: { message: data.error?.message || "Gemini 调用失败", type: "upstream_error" } },
-      { status: response.status }
-    );
-  }
+      const rawText = await response.text();
+      let data: Record<string, unknown> = {};
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText) as Record<string, unknown>;
+        } catch {
+          return {
+            ok: false,
+            status: response.status || 502,
+            data: {
+              error: {
+                message: `Google 返回异常响应（HTTP ${response.status}）`,
+                type: "upstream_error",
+              },
+            },
+          };
+        }
+      }
 
-  // 将 Gemini 响应转成 OpenAI 格式
-  const openaiLike = convertGeminiToOpenAI(data, modelConfig.id);
+      if (!response.ok) {
+        const err = data.error as { message?: string } | undefined;
+        return {
+          ok: false,
+          status: response.status,
+          data: {
+            error: {
+              message: err?.message || "Gemini 调用失败",
+              type: "upstream_error",
+            },
+          },
+        };
+      }
 
-  if (pricing && openaiLike.usage) {
-    try {
-      await deductAndLog(admin, apiKeyRecord, modelConfig.id, openaiLike.usage, pricing);
-    } catch (e) {
-      console.error("扣费失败:", e);
+      const openaiLike = convertGeminiToOpenAI(
+        data as Parameters<typeof convertGeminiToOpenAI>[0],
+        modelConfig.id
+      );
+
+      return {
+        ok: true,
+        status: 200,
+        data: openaiLike,
+        usage: openaiLike.usage,
+      };
     }
-  }
+  );
 
-  return NextResponse.json(openaiLike);
+  return respondWithBilling(result);
 }
 
 function convertMessagesToGemini(
@@ -254,8 +493,12 @@ function convertMessagesToGemini(
   if (!messages) return [];
 
   return messages.map((msg) => {
-    // Gemini 使用 "user" 和 "model" 角色
-    const role = msg.role === "assistant" ? "model" : msg.role === "system" ? "user" : msg.role;
+    const role =
+      msg.role === "assistant"
+        ? "model"
+        : msg.role === "system"
+          ? "user"
+          : msg.role;
     return {
       role,
       parts: [{ text: msg.content }],
@@ -264,12 +507,21 @@ function convertMessagesToGemini(
 }
 
 function convertGeminiToOpenAI(
-  geminiResponse: { candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>; usageMetadata?: { promptTokenCount?: number; candidatesTokenCount?: number; totalTokenCount?: number } },
+  geminiResponse: {
+    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    usageMetadata?: {
+      promptTokenCount?: number;
+      candidatesTokenCount?: number;
+      totalTokenCount?: number;
+    };
+  },
   modelId: string
 ) {
-  const text = geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  const text =
+    geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
   const promptTokens = geminiResponse?.usageMetadata?.promptTokenCount || 0;
-  const completionTokens = geminiResponse?.usageMetadata?.candidatesTokenCount || 0;
+  const completionTokens =
+    geminiResponse?.usageMetadata?.candidatesTokenCount || 0;
   const totalTokens = geminiResponse?.usageMetadata?.totalTokenCount || 0;
 
   return {
@@ -293,39 +545,4 @@ function convertGeminiToOpenAI(
       total_tokens: totalTokens,
     },
   };
-}
-
-// ================= 扣费 =================
-async function deductAndLog(
-  admin: ReturnType<typeof createAdminClient>,
-  apiKeyRecord: { id: string; user_id: string; balance: number },
-  model: string,
-  usage: { prompt_tokens: number; completion_tokens: number },
-  pricing: { input: number; output: number }
-) {
-  const promptTokens = usage.prompt_tokens || 0;
-  const completionTokens = usage.completion_tokens || 0;
-
-  const cost =
-    (promptTokens / 1_000_000) * pricing.input +
-    (completionTokens / 1_000_000) * pricing.output;
-
-  const roundedCost = Math.max(0.01, Math.round(cost * 100) / 100);
-  if (roundedCost <= 0) return;
-
-  await admin.rpc("deduct_balance", {
-    p_key_id: apiKeyRecord.id,
-    p_amount: roundedCost,
-  });
-
-  await admin.from("usage_logs").insert({
-    api_key_id: apiKeyRecord.id,
-    user_id: apiKeyRecord.user_id,
-    model,
-    prompt_tokens: promptTokens,
-    completion_tokens: completionTokens,
-    total_tokens: promptTokens + completionTokens,
-    cost: roundedCost,
-    success: true,
-  });
 }

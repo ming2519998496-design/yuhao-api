@@ -1,6 +1,6 @@
 -- ============================================
 -- 遇好API 数据库建表 SQL
--- 在 Supabase SQL Editor 中运行
+-- Supabase：SQL Editor → Create a new snippet → 粘贴 → Run（见 docs/supabase-sql-editor-only.md）
 -- ============================================
 
 -- 1. API Keys 表
@@ -13,6 +13,8 @@ CREATE TABLE IF NOT EXISTS api_keys (
   balance DECIMAL(12, 4) NOT NULL DEFAULT 0.0000,  -- 余额（元）
   total_usage DECIMAL(12, 4) NOT NULL DEFAULT 0.0000, -- 累计消费
   is_active BOOLEAN NOT NULL DEFAULT TRUE,     -- 是否启用
+  allowed_category_ids TEXT[] NOT NULL DEFAULT ARRAY['openai', 'google', 'deepseek'],
+  default_model_id TEXT NOT NULL DEFAULT 'gpt-4o-mini',
   created_at TIMESTAMPTZ NOT NULL DEFAULT NOW(),
   last_used_at TIMESTAMPTZ
 );
@@ -52,27 +54,11 @@ CREATE POLICY "users_can_see_own_keys"
   ON api_keys FOR SELECT
   USING (auth.uid() = user_id);
 
--- 用户只能插入自己的 Key
-CREATE POLICY "users_can_insert_own_keys"
-  ON api_keys FOR INSERT
-  WITH CHECK (auth.uid() = user_id);
-
--- 用户只能更新自己的 Key
-CREATE POLICY "users_can_update_own_keys"
-  ON api_keys FOR UPDATE
-  USING (auth.uid() = user_id);
-
--- 用户只能删除自己的 Key
-CREATE POLICY "users_can_delete_own_keys"
-  ON api_keys FOR DELETE
-  USING (auth.uid() = user_id);
+-- 创建/改余额/删除 Key 仅通过服务端 API（service_role），客户端不可 INSERT/UPDATE/DELETE
 
 -- 用户只能看自己的调用记录
 CREATE POLICY "users_can_see_own_usage"
   ON usage_logs FOR SELECT
   USING (auth.uid() = user_id);
 
--- 系统可以插入调用记录（通过 service_role）
-CREATE POLICY "service_can_insert_usage"
-  ON usage_logs FOR INSERT
-  WITH CHECK (auth.uid() = user_id OR auth.jwt() ->> 'role' = 'service_role');
+-- usage_logs 仅服务端写入（无 INSERT 策略；service_role 绕过 RLS）

@@ -334,7 +334,7 @@ export default function RechargePage() {
               ? "人工订单待确认中…"
               : submitting
                 ? "提交中..."
-                : "转账并上传凭证"}
+                : "充值并上传凭证"}
           </button>
         </div>
 

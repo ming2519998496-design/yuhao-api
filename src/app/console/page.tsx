@@ -123,6 +123,14 @@ export default function ConsolePage() {
     });
   }, [keys, search]);
 
+  const apiBaseUrl = useMemo(() => {
+    const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
+    const origin = site
+      ? (site.startsWith("http") ? site : `https://${site}`).replace(/\/$/, "")
+      : "https://yuhaoapi.com";
+    return `${origin}/v1`;
+  }, []);
+
   function openCreate() {
     setDialogMode("create");
     setEditingId(null);
@@ -504,7 +512,7 @@ export default function ConsolePage() {
                 {`import OpenAI from "openai";
 
 const client = new OpenAI({
-  baseURL: "https://yuhouapi.com/v1",
+  baseURL: "${apiBaseUrl}",
   apiKey: "你的 API Key",
 });
 

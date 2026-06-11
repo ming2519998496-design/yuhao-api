@@ -18,11 +18,9 @@ export function formatResendError(message: string, to?: string): string {
         /own email address \(([^)]+)\)/i
       )?.[1] ?? "你在 Resend 注册时使用的邮箱";
     return (
-      `Resend 测试账户暂时无法向 ${to ?? "该邮箱"} 发信，只能发到 ${allowed}。\n` +
-      "解决办法（任选其一）：\n" +
-      "1) 在 resend.com/domains 验证你的域名，并在 .env.local 设置 RESEND_FROM_EMAIL=noreply@你的域名；\n" +
-      "2) 开发阶段：在 .env.local 设置 RESEND_DEV_OTP_FORWARD_TO=你的Gmail，验证码会转发到该邮箱；\n" +
-      "3) 将管理员账户绑定邮箱改为已验证可收信的地址。"
+      `暂时无法向 ${to ?? "该邮箱"} 发送验证码。\n` +
+      "请在 Resend 验证发信域名（如 yuhaoapi.com），并在环境变量设置 RESEND_FROM_EMAIL=noreply@yuhaoapi.com 后重新部署。\n" +
+      `（Resend 测试模式仅允许发往 ${allowed}。）`
     );
   }
   return message;

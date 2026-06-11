@@ -5,7 +5,7 @@ import { NextResponse } from "next/server";
 
 /**
  * 注册发验证码：经 Supabase Admin 生成 OTP，Resend 直连发信（不依赖 Send Email Hook）。
- * 开发阶段可配置 RESEND_DEV_OTP_FORWARD_TO 将验证码转发到 Gmail。
+ * 验证码始终发往用户填写的注册邮箱；需在 Resend 验证发信域名。
  */
 export async function POST(request: Request) {
   let body: { email?: string; password?: string };
@@ -43,31 +43,11 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "未能生成邮箱验证码" }, { status: 500 });
   }
 
-  let result = await sendResendAuthEmail({
+  const result = await sendResendAuthEmail({
     to: email,
     action: "signup",
     token: otp,
   });
-
-  let forwardedTo: string | undefined;
-
-  if (!result.ok && result.testingRestriction) {
-    const forwardTo =
-      process.env.RESEND_DEV_OTP_FORWARD_TO?.trim() ||
-      process.env.TEST_EMAIL_TO?.trim();
-
-    if (forwardTo) {
-      result = await sendResendAuthEmail({
-        to: forwardTo,
-        action: "signup",
-        token: otp,
-        forwardForEmail: email,
-      });
-      if (result.ok) {
-        forwardedTo = forwardTo;
-      }
-    }
-  }
 
   if (!result.ok) {
     return NextResponse.json({ error: result.message }, { status: 500 });
@@ -76,9 +56,6 @@ export async function POST(request: Request) {
   return NextResponse.json({
     success: true,
     email,
-    forwardedTo,
-    message: forwardedTo
-      ? `验证码已转发至 ${forwardedTo}（注册邮箱 ${email} 暂无法直收 Resend 测试邮件，请在转发邮件中查看验证码）`
-      : `验证码已发送至 ${email}`,
+    message: `验证码已发送至 ${email}，请查收邮件（含垃圾箱）`,
   });
 }

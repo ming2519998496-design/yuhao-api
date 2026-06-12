@@ -18,9 +18,9 @@ export const UPSTREAM_PROVIDERS: {
   },
   {
     id: "openai",
-    label: "OpenAI",
-    envVar: "OPENAI_API_KEY",
-    hint: "用于 gpt-4o、gpt-5.5 等对话模型（须已在网站模型列表上架）",
+    label: "OpenAI（Vercel AI Gateway）",
+    envVar: "AI_GATEWAY_API_KEY",
+    hint: "推荐填 Vercel AI Gateway Key（非个人 OpenAI Key）；用于 GPT 对话模型，走 ai-gateway.vercel.sh",
   },
   {
     id: "google",

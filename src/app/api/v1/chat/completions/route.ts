@@ -20,6 +20,10 @@ import { getEffectiveModelConfig } from "@/lib/model-pricing-store";
 import { isChatModel, type ModelPricing } from "@/lib/models";
 import { resolveUpstreamApiKey } from "@/lib/upstream-keys-store";
 import { upstreamFetch } from "@/lib/upstream-fetch";
+import {
+  isVercelAiGatewayBaseUrl,
+  resolveOpenAiUpstreamModelForRequest,
+} from "@/lib/upstream-gateway";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { isUserFrozen } from "@/lib/account-frozen";
 
@@ -236,7 +240,11 @@ async function respondWithBilling(
 
 // ================= OpenAI / DeepSeek 兼容 =================
 async function handleOpenAIProxy(
-  modelConfig: { id: string; baseUrl: string },
+  modelConfig: {
+    id: string;
+    baseUrl: string;
+    upstreamModelId?: string;
+  },
   messages: unknown,
   rest: Record<string, unknown>,
   apiKeyValue: string,
@@ -245,6 +253,12 @@ async function handleOpenAIProxy(
   admin: ReturnType<typeof createAdminClient>
 ) {
   const maxCompletionTokens = resolveMaxCompletionTokens(rest);
+  const upstreamModel = resolveOpenAiUpstreamModelForRequest(
+    modelConfig.id,
+    modelConfig.baseUrl,
+    modelConfig.upstreamModelId
+  );
+  const viaGateway = isVercelAiGatewayBaseUrl(modelConfig.baseUrl);
 
   const result = await executeWithBilling(
     admin,
@@ -263,7 +277,7 @@ async function handleOpenAIProxy(
             Authorization: `Bearer ${apiKeyValue}`,
           },
           body: JSON.stringify({
-            model: modelConfig.id,
+            model: upstreamModel,
             messages,
             stream: false,
             ...rest,
@@ -272,12 +286,15 @@ async function handleOpenAIProxy(
       } catch (e) {
         const msg =
           e instanceof Error ? e.message : "无法连接 OpenAI 上游";
+        const hint = viaGateway
+          ? "请检查 AI Gateway Key 是否有效，或 Vercel 项目是否已开通 AI Gateway"
+          : "请检查服务器能否访问 api.openai.com，或上游 Key 是否有效";
         return {
           ok: false,
           status: 502,
           data: {
             error: {
-              message: `OpenAI 网络请求失败：${msg}（请检查服务器能否访问 api.openai.com，或上游 Key 是否有效）`,
+              message: `OpenAI 网络请求失败：${msg}（${hint}）`,
               type: "upstream_error",
             },
           },

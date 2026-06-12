@@ -64,6 +64,14 @@ export async function saveUpstreamKeys(
 
 export type UpstreamKeySource = "database" | "env" | "none";
 
+function resolveOpenAiKeyFromEnv(): string | null {
+  return (
+    process.env.AI_GATEWAY_API_KEY?.trim() ||
+    process.env.OPENAI_API_KEY?.trim() ||
+    null
+  );
+}
+
 /** 供 API 路由读取：后台配置优先，其次 .env.local；每次实时读库，保存后立即生效 */
 export async function resolveUpstreamApiKey(
   provider: string
@@ -72,6 +80,10 @@ export async function resolveUpstreamApiKey(
   const { keys } = await loadUpstreamKeys();
   const fromDb = keys[id]?.trim();
   if (fromDb) return fromDb;
+
+  if (id === "openai") {
+    return resolveOpenAiKeyFromEnv();
+  }
 
   const fromEnv = process.env[`${provider.toUpperCase()}_API_KEY`]?.trim();
   return fromEnv || null;
@@ -84,6 +96,14 @@ export async function resolveUpstreamApiKeyMeta(
   const { keys } = await loadUpstreamKeys();
   const fromDb = keys[id]?.trim();
   if (fromDb) return { key: fromDb, source: "database" };
+
+  if (id === "openai") {
+    const fromGateway = process.env.AI_GATEWAY_API_KEY?.trim();
+    if (fromGateway) return { key: fromGateway, source: "env" };
+    const fromOpenAi = process.env.OPENAI_API_KEY?.trim();
+    if (fromOpenAi) return { key: fromOpenAi, source: "env" };
+    return { key: null, source: "none" };
+  }
 
   const fromEnv = process.env[`${provider.toUpperCase()}_API_KEY`]?.trim();
   if (fromEnv) return { key: fromEnv, source: "env" };

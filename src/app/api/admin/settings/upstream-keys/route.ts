@@ -16,6 +16,12 @@ import {
 import { NextResponse } from "next/server";
 
 function envConfigured(provider: string): boolean {
+  if (provider === "openai") {
+    return Boolean(
+      process.env.AI_GATEWAY_API_KEY?.trim() ||
+        process.env.OPENAI_API_KEY?.trim()
+    );
+  }
   return Boolean(process.env[`${provider.toUpperCase()}_API_KEY`]?.trim());
 }
 

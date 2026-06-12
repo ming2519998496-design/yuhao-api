@@ -23,6 +23,8 @@ export interface ModelConfig {
   description: string;
   baseUrl: string;
   enabled: boolean;
+  /** 上游 model 参数（如 Vercel Gateway 的 openai/gpt-4o-mini）；未设则按 provider 规则推导 */
+  upstreamModelId?: string;
   /** 默认 chat */
   apiKind?: ModelApiKind;
   pricing: ModelPricing;

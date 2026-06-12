@@ -59,7 +59,45 @@ Playground 或 curl 测试 `gpt-4o-mini`、Gemini 对话模型。
 
 ---
 
-## 方式 B：OpenAI 兼容中转（不走代理）
+## 方式 C：Vercel AI Gateway（生产推荐，替代个人 OpenAI Key）
+
+OpenAI 对话模型在 **Vercel 部署** 时默认经 [Vercel AI Gateway](https://vercel.com/docs/ai-gateway) 转发，无需个人 `sk-...` OpenAI 账号。
+
+### 1. 在 Vercel 开通 AI Gateway
+
+Dashboard → 项目 **yuhao-api** → **AI Gateway** → 创建 API Key / 充值 Credits（每月含 $5 免费额度）。
+
+### 2. 环境变量
+
+```env
+AI_GATEWAY_API_KEY=你的GatewayKey
+```
+
+或在管理后台 **上游 API Key → OpenAI** 填入同一 Gateway Key（DB 优先于 env）。
+
+可选：
+
+```env
+OPENAI_USE_VERCEL_GATEWAY=true   # 本地 vercel dev 也走 Gateway
+OPENAI_USE_VERCEL_GATEWAY=false  # 强制禁用 Gateway，改回直连 OpenAI
+OPENAI_BASE_URL=https://ai-gateway.vercel.sh/v1  # 显式指定（与自动逻辑等效）
+```
+
+### 3. 行为说明
+
+| 环境 | OpenAI 上游 |
+|------|-------------|
+| Vercel 生产（`VERCEL=1`） | 自动 `https://ai-gateway.vercel.sh/v1`，model 为 `openai/gpt-4o-mini` 等 |
+| 本地 `npm run dev` | 仍默认 `api.openai.com`（除非设 `AI_GATEWAY_API_KEY` 或 `OPENAI_USE_VERCEL_GATEWAY=true`） |
+| DeepSeek / Google | 不受影响，仍直连 |
+
+### 4. 验证
+
+Playground 选择 `gpt-4o-mini` 测试。若报上游错误，检查 Gateway Key 与 Credits 余额。
+
+Token 价格与 OpenAI 官方一致（Gateway 不加价）；充值可能有支付通道费。
+
+---
 
 若使用国内 OpenAI 中转，在 `.env.local` 设置：
 

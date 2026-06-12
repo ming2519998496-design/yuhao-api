@@ -31,7 +31,11 @@ const proxy =
   "";
 
 const openaiBase =
-  process.env.OPENAI_BASE_URL?.trim() || "https://api.openai.com/v1";
+  process.env.OPENAI_BASE_URL?.trim() ||
+  (process.env.AI_GATEWAY_API_KEY?.trim() ||
+  process.env.OPENAI_USE_VERCEL_GATEWAY?.trim() === "true"
+    ? "https://ai-gateway.vercel.sh/v1"
+    : "https://api.openai.com/v1");
 const googleBase =
   process.env.GOOGLE_BASE_URL?.trim() ||
   "https://generativelanguage.googleapis.com/v1beta";
@@ -68,7 +72,7 @@ if (proxy) {
 }
 
 const results = await Promise.all([
-  probe("OpenAI", `${openaiBase}/models`),
+  probe("OpenAI / Gateway", `${openaiBase}/models`),
   probe("Google Gemini", `${googleBase}/models`),
   probe("DeepSeek", "https://api.deepseek.com/v1/models"),
 ]);

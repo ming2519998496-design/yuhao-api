@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase-admin";
+import { logBalanceAdjustment } from "@/lib/balance-adjustment-log";
 import { applyReferralProgramOnRecharge } from "@/lib/referral";
 import {
   creditUserBalance,
@@ -77,7 +78,15 @@ export async function applyUserRecharge(
   }
 
   try {
-    await creditUserBalance(userId, amount);
+    const previousBalance = await getUserTotalBalance(userId);
+    const afterRecharge = await creditUserBalance(userId, amount);
+    await logBalanceAdjustment({
+      userId,
+      previousBalance,
+      newBalance: afterRecharge,
+      kind: "recharge",
+      rechargeRecordId: record.id,
+    });
     const newBalance = await applyReferralProgramOnRecharge(
       userId,
       record.id,
@@ -107,16 +116,12 @@ export async function setUserTotalBalance(
 
   const delta = Number((newBalance - previousBalance).toFixed(4));
   if (delta !== 0) {
-    const admin = createAdminClient();
-    const { error: logErr } = await admin.from("balance_adjustment_logs").insert({
-      user_id: userId,
-      previous_balance: previousBalance,
-      new_balance: newBalance,
-      delta,
+    await logBalanceAdjustment({
+      userId,
+      previousBalance,
+      newBalance,
+      kind: "admin",
     });
-    if (logErr) {
-      throw new Error(`余额已更新，但收入记录写入失败: ${logErr.message}`);
-    }
   }
 
   return newBalance;

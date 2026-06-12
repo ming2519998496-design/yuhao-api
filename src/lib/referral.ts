@@ -1,4 +1,5 @@
 import { createAdminClient } from "@/lib/supabase-admin";
+import { logBalanceAdjustment } from "@/lib/balance-adjustment-log";
 import {
   markRechargeCompleted,
   revertRechargeToPending,
@@ -193,7 +194,15 @@ export async function completeRechargeAndRewards(
 
   let newBalance: number;
   try {
-    newBalance = await creditUserBalance(userId, amount);
+    const previousBalance = await getUserTotalBalance(userId);
+    const afterRecharge = await creditUserBalance(userId, amount);
+    await logBalanceAdjustment({
+      userId,
+      previousBalance,
+      newBalance: afterRecharge,
+      kind: "recharge",
+      rechargeRecordId: recordId,
+    });
     newBalance = await applyReferralProgramOnRecharge(userId, recordId, amount);
   } catch (e) {
     await revertRechargeToPending(admin, recordId);

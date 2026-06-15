@@ -32,6 +32,29 @@ npm run db:verify   # 自动验证 RLS / 扣费函数 / 触发器
 - API Key / 扣费：仅服务端 `SUPABASE_SERVICE_ROLE_KEY`
 - 短信 Hook：`SUPABASE_SEND_SMS_HOOK_SECRET` + Standard Webhooks 签名校验
 
+## 浏览器安全响应头
+
+全站 HTTP 响应头在 [`next.config.ts`](../next.config.ts) 中配置（定义见 [`src/lib/security-headers.ts`](../src/lib/security-headers.ts)），包含：
+
+| 头 | 作用 |
+|----|------|
+| `Content-Security-Policy` | 限制脚本/样式/连接来源 |
+| `X-Frame-Options: DENY` | 防点击劫持 |
+| `X-Content-Type-Options: nosniff` | 防 MIME 嗅探 |
+| `Referrer-Policy` | 控制 Referer 泄露 |
+| `Permissions-Policy` | 禁用相机/麦克风等 |
+| `Strict-Transport-Security` | 强制 HTTPS |
+
+部署后可用浏览器开发者工具 → Network → 任意文档请求 → Response Headers 核对。
+
+## 邮件域 SPF / DMARC
+
+扫描若提示「邮件域缺少 SPF / DMARC」，在 Cloudflare DNS 按 [dns-email-security.md](./dns-email-security.md) 添加根域 TXT 记录；改完后运行：
+
+```bash
+node scripts/check-dns-email-security.mjs yuhaoapi.com
+```
+
 ## 待办（非本次严重项）
 
 - 收款配置 JSON 勿与公开二维码同桶（见审计「高」级项）

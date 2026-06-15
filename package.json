@@ -13,6 +13,7 @@
     "check:db": "node scripts/check-db-schema.mjs",
     "test:upstream": "node scripts/test-upstream-network.mjs",
     "test:referral": "node scripts/test-referral-flow.mjs",
+    "check:dns-email": "node scripts/check-dns-email-security.mjs",
     "generate:pricing": "node scripts/generate-model-pricing.mjs"
   },
   "dependencies": {

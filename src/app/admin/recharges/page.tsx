@@ -1,6 +1,7 @@
 "use client";
 
 import { AdminShell } from "@/components/admin/admin-shell";
+import { MANUAL_RECHARGE_MIN_PAY_YUAN } from "@/lib/recharge-fees";
 import { getPaymentMethodLabel } from "@/lib/payment-settings";
 import { useCallback, useEffect, useState } from "react";
 
@@ -54,8 +55,10 @@ export default function AdminRechargesPage() {
       return;
     }
     const amount = Number(confirmAmount);
-    if (!Number.isFinite(amount) || amount < 1) {
-      setConfirmMsg("请输入有效的到账金额（≥ ¥1）");
+    if (!Number.isFinite(amount) || amount < MANUAL_RECHARGE_MIN_PAY_YUAN) {
+      setConfirmMsg(
+        `请输入有效的到账金额（≥ ¥${MANUAL_RECHARGE_MIN_PAY_YUAN}）`
+      );
       return;
     }
 
@@ -209,11 +212,11 @@ export default function AdminRechargesPage() {
             </p>
             <div className="mt-3">
               <label className="mb-1 block text-xs text-muted">
-                实际到账金额（元）
+                实际到账金额（元，不低于 ¥{MANUAL_RECHARGE_MIN_PAY_YUAN}）
               </label>
               <input
                 type="number"
-                min={1}
+                min={MANUAL_RECHARGE_MIN_PAY_YUAN}
                 step={0.01}
                 value={confirmAmount}
                 onChange={(e) => setConfirmAmount(e.target.value)}

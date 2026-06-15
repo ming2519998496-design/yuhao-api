@@ -3,6 +3,13 @@ import { getPublicSiteOrigin } from "@/lib/payment/config";
 import { getOnlinePaymentProvider } from "@/lib/payment/provider";
 import type { OnlinePayMethod } from "@/lib/payment/types";
 import {
+  computeOnlineCreditedBalance,
+  getOnlineMinPayYuan,
+  isValidOnlinePayAmount,
+  ONLINE_RECHARGE_FEE_PERCENT_LABEL,
+  ONLINE_RECHARGE_MIN_PAY_YUAN,
+} from "@/lib/recharge-fees";
+import {
   attachOnlinePaymentSession,
   createOnlinePendingRechargeRecord,
   markRechargeExpired,
@@ -10,7 +17,6 @@ import {
 import { createAdminClient } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
 
-const MIN_AMOUNT = 1;
 const MAX_AMOUNT = 100_000;
 
 /** 创建在线支付订单（XorPay 个人版起步，换主体仅改 env） */
@@ -30,9 +36,17 @@ export async function POST(request: NextRequest) {
   const amount = Number(body.amount);
   const method = String(body.method ?? "") as OnlinePayMethod;
 
-  if (!Number.isFinite(amount) || amount < MIN_AMOUNT || amount > MAX_AMOUNT) {
+  if (!Number.isFinite(amount) || amount > MAX_AMOUNT) {
     return NextResponse.json(
-      { error: `充值金额须在 ¥${MIN_AMOUNT} ~ ¥${MAX_AMOUNT} 之间` },
+      { error: `充值金额须在 ¥${ONLINE_RECHARGE_MIN_PAY_YUAN} ~ ¥${MAX_AMOUNT} 之间` },
+      { status: 400 }
+    );
+  }
+  if (amount < ONLINE_RECHARGE_MIN_PAY_YUAN || !isValidOnlinePayAmount(amount)) {
+    return NextResponse.json(
+      {
+        error: `在线支付最低 ¥${ONLINE_RECHARGE_MIN_PAY_YUAN}（扣除 ${ONLINE_RECHARGE_FEE_PERCENT_LABEL} 手续费后预计到账 ¥${computeOnlineCreditedBalance(ONLINE_RECHARGE_MIN_PAY_YUAN).toFixed(2)}）`,
+      },
       { status: 400 }
     );
   }
@@ -117,6 +131,7 @@ export async function POST(request: NextRequest) {
     ok: true,
     orderNo: record.orderNo,
     amount: amountYuan,
+    creditedPreview: computeOnlineCreditedBalance(amountYuan),
     method,
     payRedirectUrl: created.payRedirectUrl,
     expiredAt: record.expiredAt,

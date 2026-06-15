@@ -1,12 +1,18 @@
 "use client";
 
 import { PaymentPayQr } from "@/components/payment/payment-pay-qr";
+import {
+  computeOnlineCreditedBalance,
+  getOnlineMinPayYuan,
+  ONLINE_RECHARGE_FEE_NOTICE,
+  ONLINE_RECHARGE_FEE_PERCENT_LABEL,
+  ONLINE_RECHARGE_MIN_PAY_YUAN,
+} from "@/lib/recharge-fees";
 import { cn } from "@/lib/utils";
 import { Clock, Loader2, Smartphone, X, Zap } from "lucide-react";
-import { useCallback, useEffect, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useRef, useState } from "react";
 
-const PRESET_AMOUNTS = [10, 50, 100, 500];
-const MIN_AMOUNT = 1;
+const PRESET_AMOUNTS = [5, 10, 50, 100, 500];
 const MAX_AMOUNT = 100_000;
 
 type OnlineConfig = {
@@ -14,6 +20,11 @@ type OnlineConfig = {
   reason?: string;
   provider?: string;
   merchantProfileLabel?: string;
+  feePercentLabel?: string;
+  feeDisclosure?: string;
+  feeExample?: string;
+  feeNotice?: string;
+  minPayYuan?: number;
 };
 
 type Props = {
@@ -60,6 +71,11 @@ export function OnlineRechargePanel({
   const [countdown, setCountdown] = useState<string | null>(null);
 
   const pollRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const creditedPreview = useMemo(
+    () => computeOnlineCreditedBalance(amount),
+    [amount]
+  );
+  const minPayYuan = config?.minPayYuan ?? getOnlineMinPayYuan();
 
   const stopPolling = useCallback(() => {
     if (pollRef.current) {
@@ -69,7 +85,7 @@ export function OnlineRechargePanel({
   }, []);
 
   const pollOrderStatus = useCallback(
-    async (targetOrderNo: string) => {
+    async (targetOrderNo: string, paidYuan: number) => {
       const res = await fetch(
         `/api/recharge/online/status?orderNo=${encodeURIComponent(targetOrderNo)}`
       );
@@ -82,8 +98,9 @@ export function OnlineRechargePanel({
         setPayStatus("completed");
         setPayModalOpen(false);
         await onRecordsChange();
+        const credited = Number(data.record.amount);
         onPaymentComplete(
-          `在线充值 ¥${Number(data.record.amount).toFixed(2)} 已到账`
+          `在线充值已到账 ¥${credited.toFixed(2)}（实付 ¥${paidYuan.toFixed(2)}）`
         );
         setOrderNo("");
         setPayUrl("");
@@ -101,11 +118,11 @@ export function OnlineRechargePanel({
   );
 
   const startPolling = useCallback(
-    (targetOrderNo: string) => {
+    (targetOrderNo: string, paidYuan: number) => {
       stopPolling();
-      void pollOrderStatus(targetOrderNo);
+      void pollOrderStatus(targetOrderNo, paidYuan);
       pollRef.current = setInterval(() => {
-        void pollOrderStatus(targetOrderNo);
+        void pollOrderStatus(targetOrderNo, paidYuan);
       }, 2500);
     },
     [pollOrderStatus, stopPolling]
@@ -133,7 +150,7 @@ export function OnlineRechargePanel({
       );
       setPayStatus("pending");
       setPayModalOpen(true);
-      startPolling(pendingOnlineOrder.orderNo);
+      startPolling(pendingOnlineOrder.orderNo, pendingOnlineOrder.amount);
     }
   }, [pendingOnlineOrder, orderNo, startPolling]);
 
@@ -157,8 +174,12 @@ export function OnlineRechargePanel({
     }
 
     const value = Number(amount);
-    if (!Number.isFinite(value) || value < MIN_AMOUNT || value > MAX_AMOUNT) {
-      setMsg(`充值金额须在 ¥${MIN_AMOUNT} ~ ¥${MAX_AMOUNT} 之间`);
+    if (!Number.isFinite(value) || value > MAX_AMOUNT) {
+      setMsg(`充值金额不能超过 ¥${MAX_AMOUNT}`);
+      return;
+    }
+    if (value < minPayYuan) {
+      setMsg(`在线支付最低 ¥${ONLINE_RECHARGE_MIN_PAY_YUAN}`);
       return;
     }
 
@@ -186,7 +207,7 @@ export function OnlineRechargePanel({
     setPayStatus("pending");
     setPayModalOpen(true);
     await onRecordsChange();
-    startPolling(data.orderNo);
+    startPolling(data.orderNo, value);
   }
 
   const onlineEnabled = config?.enabled === true;
@@ -199,9 +220,9 @@ export function OnlineRechargePanel({
         <div className="flex items-start justify-between gap-3">
           <h2 className="flex items-center gap-2 font-semibold">
             <Zap className="h-5 w-5 text-accent" />
-            在线支付
+            在线支付（回调入账）
             <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-dark">
-              推荐
+              即时到账
             </span>
           </h2>
           {onlineEnabled && config?.merchantProfileLabel && (
@@ -211,7 +232,11 @@ export function OnlineRechargePanel({
           )}
         </div>
         <p className="mt-2 text-sm text-muted">
-          微信/支付宝扫码支付，<strong className="text-foreground">付款成功后自动到账</strong>，无需等待人工确认。
+          微信/支付宝扫码，付款成功后<strong className="text-foreground">自动入账</strong>，无需上传凭证。
+        </p>
+        <p className="mt-2 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900">
+          {config?.feeNotice ?? ONLINE_RECHARGE_FEE_NOTICE}
+          {onlineEnabled ? ` 最低支付 ¥${ONLINE_RECHARGE_MIN_PAY_YUAN}。` : ""}
         </p>
 
         {configLoading ? (
@@ -245,10 +270,10 @@ export function OnlineRechargePanel({
             </div>
 
             <label className="mt-4 block text-sm">
-              <span className="text-muted">充值金额（元）</span>
+              <span className="text-muted">支付金额（元）</span>
               <input
                 type="number"
-                min={MIN_AMOUNT}
+                min={minPayYuan}
                 max={MAX_AMOUNT}
                 step={1}
                 value={amount}
@@ -256,6 +281,16 @@ export function OnlineRechargePanel({
                 className="mt-1.5 w-full rounded-xl border border-border bg-background px-4 py-2.5 text-foreground outline-none focus:border-accent"
               />
             </label>
+
+            {Number.isFinite(amount) && amount >= minPayYuan && (
+              <p className="mt-2 text-xs text-muted">
+                预计余额到账{" "}
+                <strong className="text-foreground">
+                  ¥{creditedPreview.toFixed(2)}
+                </strong>
+                （已扣除 {config?.feePercentLabel ?? ONLINE_RECHARGE_FEE_PERCENT_LABEL} 手续费）
+              </p>
+            )}
 
             <div className="mt-4 flex gap-2">
               {(
@@ -356,7 +391,8 @@ export function OnlineRechargePanel({
             </h3>
             <p className="mt-1 text-xs text-muted">
               请使用{method === "wechat" ? "微信" : "支付宝"}扫描下方二维码，支付 ¥
-              {Number(amount).toFixed(2)}
+              {Number(amount).toFixed(2)}，预计到账 ¥
+              {creditedPreview.toFixed(2)}
             </p>
 
             <div className="mt-4 flex justify-center rounded-2xl border border-border bg-white p-4">

@@ -1,4 +1,5 @@
 import { requireAdmin } from "@/lib/auth-admin";
+import { MANUAL_RECHARGE_MIN_PAY_YUAN } from "@/lib/recharge-fees";
 import { orderNoFromId } from "@/lib/recharge-records";
 import { completeRechargeAndRewards } from "@/lib/referral";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -26,12 +27,33 @@ export async function POST(request: NextRequest) {
     return NextResponse.json({ error: "缺少 recordId" }, { status: 400 });
   }
 
+  const admin = createAdminClient();
+  const { data: pendingRecord } = await admin
+    .from("recharge_records")
+    .select("source, status")
+    .eq("id", recordId)
+    .maybeSingle();
+
+  if (!pendingRecord) {
+    return NextResponse.json({ error: "充值记录不存在" }, { status: 404 });
+  }
+
+  if (
+    pendingRecord.source !== "online" &&
+    confirmedAmount !== undefined &&
+    confirmedAmount < MANUAL_RECHARGE_MIN_PAY_YUAN
+  ) {
+    return NextResponse.json(
+      { error: `人工转账到账金额不能低于 ¥${MANUAL_RECHARGE_MIN_PAY_YUAN}` },
+      { status: 400 }
+    );
+  }
+
   const result = await completeRechargeAndRewards(recordId, confirmedAmount);
   if (!result.ok) {
     return NextResponse.json({ error: result.error }, { status: 500 });
   }
 
-  const admin = createAdminClient();
   const { data: record } = await admin
     .from("recharge_records")
     .select("order_no")

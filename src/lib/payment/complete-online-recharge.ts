@@ -1,4 +1,5 @@
 import { completeRechargeAndRewards } from "@/lib/referral";
+import { computeOnlineCreditedBalance } from "@/lib/recharge-fees";
 import {
   getRechargeRecordByExternalOrderId,
   getRechargeRecordByOrderNo,
@@ -66,7 +67,16 @@ export async function processOnlinePaymentNotify(
     paidAmount: paid,
   });
 
-  const result = await completeRechargeAndRewards(row.id, paid);
+  const credited = computeOnlineCreditedBalance(paid);
+  if (credited < 1) {
+    return {
+      ok: false,
+      error: `到账金额 ¥${credited.toFixed(2)} 低于最低 ¥1（实付 ¥${paid.toFixed(2)}）`,
+      httpStatus: 400,
+    };
+  }
+
+  const result = await completeRechargeAndRewards(row.id, credited);
   if (!result.ok) {
     return { ok: false, error: result.error ?? "入账失败", httpStatus: 500 };
   }

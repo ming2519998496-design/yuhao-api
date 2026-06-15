@@ -3,6 +3,13 @@
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
 import { PaymentQrImage } from "@/components/payment/payment-qr-image";
 import { OnlineRechargePanel } from "@/components/recharge/online-recharge-panel";
+import {
+  computeOnlineCreditedBalance,
+  MANUAL_RECHARGE_DELAY_NOTICE,
+  MANUAL_RECHARGE_EXTRA_NOTICE,
+  MANUAL_RECHARGE_MIN_PAY_YUAN,
+  RECHARGE_MIN_YUAN,
+} from "@/lib/recharge-fees";
 import { cn } from "@/lib/utils";
 import {
   getPaymentMethodLabel,
@@ -32,6 +39,7 @@ type RechargeRecord = {
   id: number;
   orderNo: string;
   amount: number;
+  paidAmount?: number | null;
   method: string;
   status: string;
   statusLabel: string;
@@ -41,6 +49,21 @@ type RechargeRecord = {
   payRedirectUrl?: string | null;
   expiredAt?: string | null;
 };
+
+function formatRecordAmount(row: RechargeRecord): string {
+  const isOnline = row.source === "online";
+  if (row.status === "pending") {
+    if (isOnline && row.amount > 0) {
+      const credited = computeOnlineCreditedBalance(row.amount);
+      return `待支付 ¥${row.amount.toFixed(2)}（预计到账 ¥${credited.toFixed(2)}）`;
+    }
+    return row.amount > 0 ? `¥${row.amount.toFixed(2)}` : "待核对";
+  }
+  if (isOnline && row.paidAmount != null && row.paidAmount > row.amount) {
+    return `到账 ¥${row.amount.toFixed(2)}（实付 ¥${row.paidAmount.toFixed(2)}）`;
+  }
+  return row.amount > 0 ? `¥${row.amount.toFixed(2)}` : "待核对";
+}
 
 function formatRechargeTime(iso: string): string {
   return new Date(iso).toLocaleString("zh-CN", {
@@ -136,9 +159,13 @@ export default function RechargePage() {
         const row = newlyCompleted[0];
         const via =
           row.source === "online" ? "在线充值" : "人工充值";
-        setSubmitMsg(
-          `${via} ¥${row.amount.toFixed(2)} 已到账，余额已更新`
-        );
+        const detail =
+          row.source === "online" &&
+          row.paidAmount != null &&
+          row.paidAmount > row.amount
+            ? `到账 ¥${row.amount.toFixed(2)}（实付 ¥${row.paidAmount.toFixed(2)}）`
+            : `¥${row.amount.toFixed(2)}`;
+        setSubmitMsg(`${via} ${detail} 已到账，余额已更新`);
       }
     }
 
@@ -233,7 +260,7 @@ export default function RechargePage() {
   return (
     <DashboardShell
       title="我的钱包"
-      description="无门槛充值，1 元起充，按量计费透明可查"
+      description={`在线支付与人工转账均 ${RECHARGE_MIN_YUAN} 元起充，按量计费透明可查`}
     >
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="rounded-2xl border border-accent/25 bg-gradient-to-br from-accent/10 via-surface-elevated to-surface-elevated p-6 shadow-sm">
@@ -242,7 +269,7 @@ export default function RechargePage() {
             ¥{balance.toFixed(2)}
           </p>
           <p className="mt-2 text-xs text-muted">
-            在线支付自动到账；人工转账需管理员核对凭证后入账，余额永久有效
+            请选择充值方式：在线支付（含 1.8% 手续费、即时到账）或人工转账（无手续费、需上传凭证）
           </p>
         </div>
 
@@ -268,7 +295,7 @@ export default function RechargePage() {
 
         <div className="relative flex items-center gap-3 py-1">
           <div className="h-px flex-1 bg-border" />
-          <span className="shrink-0 text-xs text-muted">或 · 备用方式</span>
+          <span className="shrink-0 text-xs text-muted">或 · 选择人工充值</span>
           <div className="h-px flex-1 bg-border" />
         </div>
 
@@ -276,14 +303,17 @@ export default function RechargePage() {
           <h2 className="flex items-center gap-2 font-semibold">
             <Upload className="h-5 w-5 text-muted" />
             人工转账
+            <span className="rounded-full bg-emerald-500/10 px-2 py-0.5 text-xs font-medium text-emerald-700">
+              无手续费
+            </span>
           </h2>
           <p className="mt-2 text-sm text-muted">
-            在线支付<strong className="text-foreground">不可用或失败</strong>
-            时使用：向平台收款码转账，并上传转账成功截图，管理员核对后入账。
+            向平台收款码转账并上传充值凭证，<strong className="text-foreground">实际转账金额即为到账余额</strong>。
           </p>
           <p className="mt-3 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900">
-            单笔充值金额不能低于 ¥1；金额以转账凭证为准，由管理员核对
+            {MANUAL_RECHARGE_DELAY_NOTICE}
           </p>
+          <p className="mt-2 text-xs text-muted">{MANUAL_RECHARGE_EXTRA_NOTICE}</p>
 
           {enabledMethods.length === 0 && (
             <p className="mt-4 rounded-xl border border-dashed border-border p-4 text-center text-sm text-muted">
@@ -358,7 +388,7 @@ export default function RechargePage() {
                 <p className="mt-1 truncate text-xs text-muted">
                   最近：{formatRechargeTime(latestRecord.createdAt)} ·{" "}
                   {latestRecord.amount > 0
-                    ? `¥${latestRecord.amount.toFixed(2)}`
+                    ? formatRecordAmount(latestRecord)
                     : "待核对"}{" "}
                   · {latestRecord.statusLabel}
                 </p>
@@ -411,10 +441,8 @@ export default function RechargePage() {
                           <td className="px-6 py-3.5 text-muted">
                             {formatRechargeTime(row.createdAt)}
                           </td>
-                          <td className="px-6 py-3.5 font-semibold text-foreground">
-                            {row.amount > 0
-                              ? `¥${row.amount.toFixed(2)}`
-                              : "待核对"}
+                          <td className="px-6 py-3.5 text-sm font-semibold text-foreground">
+                            {formatRecordAmount(row)}
                           </td>
                           <td className="px-6 py-3.5 text-xs">
                             <span className="block text-foreground">
@@ -492,7 +520,7 @@ export default function RechargePage() {
               第一步：向平台账户转账
             </h3>
             <p className="mt-1 text-xs text-muted">
-              请扫描下方收款码完成转账，单笔不能低于 ¥1，金额以实际转账为准
+              请扫描下方收款码完成转账，单笔不能低于 ¥{MANUAL_RECHARGE_MIN_PAY_YUAN}，金额以实际转账为准
             </p>
 
             {enabledMethods.length > 1 && (

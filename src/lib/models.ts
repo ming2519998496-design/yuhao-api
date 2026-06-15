@@ -5,7 +5,12 @@ export interface ModelCategory {
   sort: number;
 }
 
-export type ModelApiKind = "chat" | "gemini-image" | "imagen" | "veo";
+export type ModelApiKind =
+  | "chat"
+  | "gemini-image"
+  | "imagen"
+  | "veo"
+  | "openai-image";
 
 /** 平台计费：对话按 tokens；图像/视频可用 perRequestYuan 按次 */
 export interface ModelPricing {
@@ -58,28 +63,34 @@ export const MODEL_CATEGORIES: ModelCategory[] = [
     sort: 1,
   },
   {
+    id: "openai-image",
+    name: "OpenAI · 图像生成",
+    description: "GPT Image 文生图（gpt-image 系列）",
+    sort: 2,
+  },
+  {
     id: "google",
     name: "Google · Gemini 对话",
     description: "长上下文、高性价比与快速响应",
-    sort: 2,
+    sort: 3,
   },
   {
     id: "google-image",
     name: "Google · 图像生成",
     description: "Gemini 图像、Imagen、Nano Banana",
-    sort: 3,
+    sort: 4,
   },
   {
     id: "google-video",
     name: "Google · 视频生成",
     description: "Veo 文生视频",
-    sort: 4,
+    sort: 5,
   },
   {
     id: "deepseek",
     name: "DeepSeek",
     description: "国产高性价比大模型，代码与推理表现优秀",
-    sort: 5,
+    sort: 6,
   },
 ];
 
@@ -264,6 +275,50 @@ export const MODEL_LIST: ModelConfig[] = [
     baseUrl: "https://api.openai.com/v1",
     enabled: true,
     pricing: { inputPerMillion: 50.98, outputPerMillion: 203.9 },
+  },
+  {
+    id: "gpt-image-1-mini",
+    name: "GPT Image 1 Mini",
+    provider: "openai",
+    categoryId: "openai-image",
+    description: "轻量文生图；官方 $2.5/1M 输入 · $10/1M 输出，平台按 medium 1024 约 ¥0.10/张",
+    baseUrl: "https://api.openai.com/v1",
+    enabled: true,
+    apiKind: "openai-image",
+    pricing: { inputPerMillion: 23.4, outputPerMillion: 93.6, perRequestYuan: 0.1 },
+  },
+  {
+    id: "gpt-image-1",
+    name: "GPT Image 1",
+    provider: "openai",
+    categoryId: "openai-image",
+    description: "OpenAI 文生图；官方 $5/1M 输入 · $40/1M 输出，平台按 medium 1024 约 ¥0.59/张",
+    baseUrl: "https://api.openai.com/v1",
+    enabled: true,
+    apiKind: "openai-image",
+    pricing: { inputPerMillion: 46.8, outputPerMillion: 374.4, perRequestYuan: 0.59 },
+  },
+  {
+    id: "gpt-image-1.5",
+    name: "GPT Image 1.5",
+    provider: "openai",
+    categoryId: "openai-image",
+    description: "高质量文生图；官方 $8/1M 输入 · $30/1M 输出，平台按 medium 1024 约 ¥0.47/张",
+    baseUrl: "https://api.openai.com/v1",
+    enabled: true,
+    apiKind: "openai-image",
+    pricing: { inputPerMillion: 74.88, outputPerMillion: 280.8, perRequestYuan: 0.47 },
+  },
+  {
+    id: "gpt-image-2",
+    name: "GPT Image 2",
+    provider: "openai",
+    categoryId: "openai-image",
+    description: "最新旗舰文生图；官方 $8/1M 输入 · $30/1M 输出，平台按 medium 1024 约 ¥0.50/张",
+    baseUrl: "https://api.openai.com/v1",
+    enabled: true,
+    apiKind: "openai-image",
+    pricing: { inputPerMillion: 74.88, outputPerMillion: 280.8, perRequestYuan: 0.5 },
   },
   {
     id: "gemini-2.0-flash",

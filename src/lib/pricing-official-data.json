@@ -51,6 +51,50 @@
     "imagen-4.0-generate-001": { "tier": "image", "perRequestUsd": 0.04 },
     "imagen-4.0-ultra-generate-001": { "tier": "image", "perRequestUsd": 0.06 },
     "imagen-4.0-fast-generate-001": { "tier": "image", "perRequestUsd": 0.02 },
+    "gpt-image-1-mini": {
+      "tier": "image",
+      "in": 2.5,
+      "out": 10,
+      "imageBilling": {
+        "defaultPromptTokens": 100,
+        "defaultOutputTokens": 1080,
+        "quality": "medium",
+        "size": "1024x1024"
+      }
+    },
+    "gpt-image-1": {
+      "tier": "image",
+      "in": 5,
+      "out": 40,
+      "imageBilling": {
+        "defaultPromptTokens": 100,
+        "defaultOutputTokens": 1560,
+        "quality": "medium",
+        "size": "1024x1024"
+      }
+    },
+    "gpt-image-1.5": {
+      "tier": "image",
+      "in": 8,
+      "out": 30,
+      "imageBilling": {
+        "defaultPromptTokens": 100,
+        "defaultOutputTokens": 1640,
+        "quality": "medium",
+        "size": "1024x1024"
+      }
+    },
+    "gpt-image-2": {
+      "tier": "image",
+      "in": 8,
+      "out": 30,
+      "imageBilling": {
+        "defaultPromptTokens": 100,
+        "defaultOutputTokens": 1740,
+        "quality": "medium",
+        "size": "1024x1024"
+      }
+    },
     "veo-2.0-generate-001": { "tier": "image", "perSecondUsd": 0.35, "defaultSeconds": 8 },
     "veo-3.0-generate-001": { "tier": "image", "perSecondUsd": 0.4, "defaultSeconds": 8 },
     "veo-3.0-fast-generate-001": { "tier": "image", "perSecondUsd": 0.1, "defaultSeconds": 8 },

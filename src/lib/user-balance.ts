@@ -95,6 +95,7 @@ async function creditLegacyKeyBalance(
     balance: amount,
     allowed_category_ids: [
       "openai",
+      "openai-image",
       "google",
       "google-image",
       "google-video",

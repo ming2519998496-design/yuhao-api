@@ -22,8 +22,28 @@ function round2(n) {
   return Math.round(n * 100) / 100;
 }
 
+function computeImagePerRequestUsd(spec) {
+  if (spec.imageBilling && spec.in != null && spec.out != null) {
+    const prompt = spec.imageBilling.defaultPromptTokens ?? 100;
+    const output = spec.imageBilling.defaultOutputTokens ?? 0;
+    return (prompt / 1_000_000) * spec.in + (output / 1_000_000) * spec.out;
+  }
+  return null;
+}
+
 function compute(id, spec) {
   const m = 1 + MARKUP[spec.tier];
+  const imageUsd = computeImagePerRequestUsd(spec);
+  if (imageUsd != null) {
+    const quality = spec.imageBilling?.quality ?? "medium";
+    const size = spec.imageBilling?.size ?? "1024x1024";
+    return {
+      inputPerMillion: round2(spec.in * FX * m),
+      outputPerMillion: round2(spec.out * FX * m),
+      perRequestYuan: round2(imageUsd * FX * m),
+      billingNote: `按张（官方按 Token；参考 ${quality} ${size} 单张折算）`,
+    };
+  }
   if (spec.perRequestUsd != null) {
     return {
       inputPerMillion: 0,
@@ -152,7 +172,7 @@ for (const [id, p] of Object.entries(pricingMap)) {
     );
     patched = patched.replace(
       re,
-      `$1 inputPerMillion: 0, outputPerMillion: 0, perRequestYuan: ${p.perRequestYuan}$2`
+      `$1 inputPerMillion: ${p.inputPerMillion}, outputPerMillion: ${p.outputPerMillion}, perRequestYuan: ${p.perRequestYuan}$2`
     );
   } else {
     const re = new RegExp(

@@ -1,5 +1,9 @@
 import officialData from "@/lib/pricing-official-data.json";
 import {
+  computeGptImageOfficialUsdPerRequest,
+  formatGptImageOfficialLabel,
+} from "@/lib/pricing-gpt-image";
+import {
   MODEL_CATEGORIES,
   type ModelConfig,
   type ModelPricing,
@@ -16,6 +20,12 @@ type OfficialSpec = {
   perRequestUsd?: number;
   perSecondUsd?: number;
   defaultSeconds?: number;
+  imageBilling?: {
+    defaultPromptTokens: number;
+    defaultOutputTokens: number;
+    quality?: string;
+    size?: string;
+  };
 };
 
 export type PricingTierInfo = {
@@ -116,6 +126,17 @@ export function formatCny(amount: number): string {
 }
 
 function officialUsdPerRequest(spec: OfficialSpec): number | null {
+  if (
+    spec.imageBilling &&
+    spec.in != null &&
+    spec.out != null
+  ) {
+    return computeGptImageOfficialUsdPerRequest({
+      in: spec.in,
+      out: spec.out,
+      imageBilling: spec.imageBilling,
+    });
+  }
   if (spec.perRequestUsd != null) return spec.perRequestUsd;
   if (spec.perSecondUsd != null) {
     return spec.perSecondUsd * (spec.defaultSeconds ?? 8);
@@ -124,6 +145,17 @@ function officialUsdPerRequest(spec: OfficialSpec): number | null {
 }
 
 function officialLabel(spec: OfficialSpec): string {
+  if (
+    spec.imageBilling &&
+    spec.in != null &&
+    spec.out != null
+  ) {
+    return formatGptImageOfficialLabel({
+      in: spec.in,
+      out: spec.out,
+      imageBilling: spec.imageBilling,
+    });
+  }
   if (spec.perRequestUsd != null) {
     return `${formatUsd(spec.perRequestUsd)}/张`;
   }
@@ -164,7 +196,11 @@ function buildFixedRow(model: ModelConfig, spec: OfficialSpec): TransparencyFixe
     costCny: costCnyFromUsd(usd),
     platformCny: charge,
     unitLabel: isVideo ? "元/次（8 秒）" : "元/张",
-    note: isVideo ? "视频按次扣费，按默认 8 秒估算；官网实际按秒计费" : undefined,
+    note: isVideo
+      ? "视频按次扣费，按默认 8 秒估算；官网实际按秒计费"
+      : spec.imageBilling
+        ? "官方按 Token 计价；平台按 medium 1024×1024 单张折算扣费"
+        : undefined,
   };
 }
 
@@ -221,10 +257,26 @@ function exampleLines(
   platform: ModelPricing
 ): FeaturedPricingExample["lines"] {
   const tier = getTierInfo(spec.tier);
-  if (spec.perRequestUsd != null) {
-    const usd = spec.perRequestUsd;
+  if (spec.perRequestUsd != null || spec.imageBilling) {
+    const usd =
+      spec.imageBilling && spec.in != null && spec.out != null
+        ? computeGptImageOfficialUsdPerRequest({
+            in: spec.in,
+            out: spec.out,
+            imageBilling: spec.imageBilling,
+          })
+        : (spec.perRequestUsd ?? 0);
     return [
-      { label: "官方价", value: `${formatUsd(usd)}/张` },
+      {
+        label: "官方价",
+        value: spec.imageBilling
+          ? formatGptImageOfficialLabel({
+              in: spec.in!,
+              out: spec.out!,
+              imageBilling: spec.imageBilling,
+            })
+          : `${formatUsd(usd)}/张`,
+      },
       { label: "× 汇率", value: String(FX) },
       { label: "成本价", value: formatCny(costCnyFromUsd(usd)) },
       { label: "+ 服务费", value: `${tier.markupPercent}%（${tier.label}）` },

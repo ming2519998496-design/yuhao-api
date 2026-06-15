@@ -5,7 +5,9 @@ import {
   getModelApiKind,
   isChatModel,
   resolveModelChargeYuan,
+  type ModelConfig,
 } from "@/lib/models";
+import { runOpenAiGeneration } from "@/lib/openai-generations";
 import { resolveUpstreamApiKey } from "@/lib/upstream-keys-store";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
@@ -20,9 +22,44 @@ function billingHeaders(cost: number, balance: number) {
   return headers;
 }
 
+type GenerationRequestBody = {
+  model?: string;
+  prompt?: string;
+  size?: string;
+  quality?: string;
+};
+
+async function runGenerationForProvider(
+  modelConfig: ModelConfig,
+  apiKeyValue: string,
+  prompt: string,
+  body: GenerationRequestBody
+) {
+  if (modelConfig.provider === "google") {
+    return runGoogleGeneration(modelConfig, apiKeyValue, prompt);
+  }
+  if (modelConfig.provider === "openai") {
+    return runOpenAiGeneration(modelConfig, apiKeyValue, {
+      prompt,
+      size: body.size,
+      quality: body.quality,
+    });
+  }
+  return {
+    ok: false as const,
+    status: 400,
+    data: {
+      error: {
+        message: `暂不支持 ${modelConfig.provider} 图像/视频生成`,
+        type: "invalid_request_error",
+      },
+    },
+  };
+}
+
 export async function POST(request: NextRequest) {
   try {
-    let body: { model?: string; prompt?: string };
+    let body: GenerationRequestBody;
     try {
       body = await request.json();
     } catch {
@@ -71,11 +108,11 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    if (modelConfig.provider !== "google") {
+    if (modelConfig.provider !== "google" && modelConfig.provider !== "openai") {
       return NextResponse.json(
         {
           error: {
-            message: "当前仅支持 Google 图像/视频生成模型",
+            message: "当前仅支持 Google 与 OpenAI 图像/视频生成模型",
             type: "invalid_request_error",
           },
         },
@@ -83,12 +120,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const apiKeyValue = await resolveUpstreamApiKey("google");
+    const apiKeyValue = await resolveUpstreamApiKey(modelConfig.provider);
     if (!apiKeyValue) {
       return NextResponse.json(
         {
           error: {
-            message: "服务商 google 未配置",
+            message: `服务商 ${modelConfig.provider} 未配置`,
             type: "server_error",
           },
         },
@@ -98,7 +135,11 @@ export async function POST(request: NextRequest) {
 
     const chargeYuan =
       resolveModelChargeYuan(modelConfig.pricing) ||
-      (getModelApiKind(modelConfig) === "veo" ? 3 : 0.5);
+      (getModelApiKind(modelConfig) === "veo"
+        ? 3
+        : getModelApiKind(modelConfig) === "openai-image"
+          ? 0.5
+          : 0.5);
 
     const admin = createAdminClient();
     const result = await executeWithFixedBilling(
@@ -106,7 +147,7 @@ export async function POST(request: NextRequest) {
       apiKey,
       modelConfig.id,
       chargeYuan,
-      () => runGoogleGeneration(modelConfig, apiKeyValue, prompt)
+      () => runGenerationForProvider(modelConfig, apiKeyValue, prompt, body)
     );
 
     if (!result.ok) {

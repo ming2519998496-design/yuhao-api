@@ -20,7 +20,7 @@ export const UPSTREAM_PROVIDERS: {
     id: "openai",
     label: "OpenAI（Vercel AI Gateway）",
     envVar: "AI_GATEWAY_API_KEY",
-    hint: "推荐填 Vercel AI Gateway Key（非个人 OpenAI Key）；用于 GPT 对话模型，走 ai-gateway.vercel.sh",
+    hint: "推荐填 Vercel AI Gateway Key（非个人 OpenAI Key）；用于 GPT 对话与 GPT Image 图像模型，走 ai-gateway.vercel.sh",
   },
   {
     id: "google",

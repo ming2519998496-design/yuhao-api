@@ -25,6 +25,7 @@ function PlaygroundContent() {
   const [loading, setLoading] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [billingNote, setBillingNote] = useState("");
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   useEffect(() => {
     const fromQuery = searchParams.get("model");
@@ -100,6 +101,7 @@ function PlaygroundContent() {
     setLoading(true);
     setResponse("");
     setBillingNote("");
+    setImagePreview(null);
 
     const isGeneration = modelApiKind !== "chat";
 
@@ -126,6 +128,14 @@ function PlaygroundContent() {
 
       const data = await res.json();
       setResponse(JSON.stringify(data, null, 2));
+
+      const firstImage = data?.data?.[0];
+      if (firstImage?.b64_json) {
+        const mime = firstImage.mime_type || "image/png";
+        setImagePreview(`data:${mime};base64,${firstImage.b64_json}`);
+      } else if (firstImage?.url) {
+        setImagePreview(firstImage.url);
+      }
 
       const cost = res.headers.get("X-Yuhao-Billing-Cost-Cny");
       const balance = res.headers.get("X-Yuhao-Billing-Balance-Cny");
@@ -233,6 +243,20 @@ function PlaygroundContent() {
             <p className="mt-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 text-sm text-accent-dark">
               {billingNote}
             </p>
+          )}
+
+          {imagePreview && (
+            <div className="mt-4">
+              <label className="mb-1.5 block text-sm text-muted">图像预览</label>
+              <div className="overflow-hidden rounded-lg border border-border bg-white p-3">
+                {/* eslint-disable-next-line @next/next/no-img-element */}
+                <img
+                  src={imagePreview}
+                  alt="生成结果"
+                  className="mx-auto max-h-96 w-auto rounded-md object-contain"
+                />
+              </div>
+            </div>
           )}
 
           {response && (

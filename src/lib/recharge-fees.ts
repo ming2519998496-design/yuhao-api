@@ -15,7 +15,7 @@ export const ONLINE_RECHARGE_FEE_EXAMPLE =
 
 /** 人工充值说明（我的钱包 · 人工充值） */
 export const MANUAL_RECHARGE_DELAY_NOTICE =
-  "余额到账会有延迟，请刷新页面。";
+  "余额到账会有延迟，请刷新页面";
 
 export const MANUAL_RECHARGE_EXTRA_NOTICE =
   "无手续费，单笔最低 ¥5；需上传转账凭证，实际转账金额即为到账余额，由管理员核对凭证后入账。";

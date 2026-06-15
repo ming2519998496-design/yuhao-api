@@ -12,11 +12,15 @@ function digTxt(name) {
   try {
     const out = execSync(`dig TXT ${name} +short`, { encoding: "utf8" }).trim();
     if (!out) return [];
-    // 合并多段 TXT（如 DKIM 长密钥）为一条
-    const merged = out.replace(/\n/g, "").replace(/"\s+"/g, "");
-    return merged
+    // dig 对同一主机名可能返回多行 TXT，每行一条记录；勿把多行合并成一行
+    return out
       .split("\n")
-      .map((line) => line.replace(/^"+|"+$/g, "").trim())
+      .map((line) => {
+        let s = line.trim();
+        // 同一行内分段 TXT（如长 DKIM）："part1""part2" → part1part2
+        s = s.replace(/"\s*"/g, "");
+        return s.replace(/^"+|"+$/g, "").trim();
+      })
       .filter(Boolean);
   } catch {
     return [];

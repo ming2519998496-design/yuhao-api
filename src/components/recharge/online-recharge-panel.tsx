@@ -220,16 +220,11 @@ export function OnlineRechargePanel({
         <div className="flex items-start justify-between gap-3">
           <h2 className="flex items-center gap-2 font-semibold">
             <Zap className="h-5 w-5 text-accent" />
-            在线支付（回调入账）
+            在线支付
             <span className="rounded-full bg-accent/15 px-2 py-0.5 text-xs font-medium text-accent-dark">
               即时到账
             </span>
           </h2>
-          {onlineEnabled && config?.merchantProfileLabel && (
-            <span className="shrink-0 text-xs text-muted">
-              {config.merchantProfileLabel}商户
-            </span>
-          )}
         </div>
         <p className="mt-2 text-sm text-muted">
           微信/支付宝扫码，付款成功后<strong className="text-foreground">自动入账</strong>，无需上传凭证。

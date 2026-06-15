@@ -13,7 +13,7 @@
 
 新建项目请直接使用更新后的 `supabase-schema.sql` / `supabase-admin-schema.sql` / `supabase-functions.sql`，再按需执行 security-fix（幂等，可重复执行）。
 
-**API 冻结计费**（`/v1/chat/completions`）：另在 SQL Editor 执行 [`supabase-billing-reserve.sql`](../supabase-billing-reserve.sql)（或 `npm run db:setup` 已包含），提供 `reserve_balance` / `settle_balance` / `release_balance`。
+**API 冻结计费**（`/v1/chat/completions`）：另在 SQL Editor 执行 [`supabase-billing-reserve.sql`](../supabase-billing-reserve.sql)（或 `npm run db:setup` 已包含），提供 `reserve_balance` / `settle_balance` / `release_balance`。Agent / tools 兼容说明见 [api-compatibility.md](./api-compatibility.md)。
 
 ## 方案 A：本地一键执行
 

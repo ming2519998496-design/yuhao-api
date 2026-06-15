@@ -507,7 +507,7 @@ export default function ConsolePage() {
             />
           </button>
           {devGuideOpen && (
-            <div className="border-t border-border px-6 pb-6 pt-4">
+            <div className="border-t border-border px-6 pb-6 pt-4 space-y-4">
               <pre className="overflow-x-auto rounded-xl border border-border bg-background p-4 font-mono text-xs leading-relaxed text-slate-600">
                 {`import OpenAI from "openai";
 
@@ -521,6 +521,19 @@ const res = await client.chat.completions.create({
   messages: [{ role: "user", content: "你好" }],
 });`}
               </pre>
+              <ul className="list-disc space-y-1.5 pl-5 text-xs text-muted leading-relaxed">
+                <li>
+                  Agent / 工具调用：请使用 OpenAI 或 DeepSeek 分组；预扣费已包含{" "}
+                  <code className="rounded bg-background px-1">tools</code> 定义。
+                </li>
+                <li>
+                  Gemini 不支持{" "}
+                  <code className="rounded bg-background px-1">tools</code>；支持{" "}
+                  <code className="rounded bg-background px-1">stream: true</code>{" "}
+                  流式（OpenAI 兼容路径）。
+                </li>
+                <li>单次请求体上限约 4 MB；过大返回 413，请减少 tools 或缩短历史。</li>
+              </ul>
             </div>
           )}
         </div>

@@ -1,11 +1,13 @@
 import { NextRequest, NextResponse } from "next/server";
 import crypto from "crypto";
 import {
+  buildBillingReserveContext,
   DEFAULT_MAX_COMPLETION_TOKENS,
   executeWithBilling,
   normalizeUsage,
-  resolveMaxCompletionTokens,
 } from "@/lib/billing-reserve";
+import { handleOpenAIStreamProxy } from "@/lib/openai-stream-billing";
+import { readJsonBodyWithLimit } from "@/lib/request-body-limit";
 import {
   DEFAULT_MODEL_ID,
   isModelAllowedForKey,
@@ -93,7 +95,12 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const body = await request.json();
+    const parsedBody = await readJsonBodyWithLimit(request);
+    if (!parsedBody.ok) {
+      return parsedBody.response;
+    }
+
+    const body = parsedBody.body;
     const { model: requestedModel, messages, ...rest } = body;
     const allowedCategories = resolveAllowedCategoryIds(
       apiKey.allowed_category_ids as string[] | undefined
@@ -185,6 +192,19 @@ export async function POST(request: NextRequest) {
       );
     }
     if (provider === "google") {
+      if (hasToolCallingParams(body)) {
+        return NextResponse.json(
+          {
+            error: {
+              message:
+                "Gemini 模型暂不支持 tools / tool_choice。请改用 OpenAI 或 DeepSeek 分组下的模型进行 Agent / 工具调用。",
+              type: "invalid_request_error",
+              code: "tools_not_supported",
+            },
+          },
+          { status: 400 }
+        );
+      }
       return handleGeminiProxy(
         modelConfig,
         messages,
@@ -238,6 +258,14 @@ async function respondWithBilling(
   });
 }
 
+function hasToolCallingParams(body: Record<string, unknown>): boolean {
+  return body.tools != null || body.tool_choice != null;
+}
+
+function isStreamingRequested(rest: Record<string, unknown>): boolean {
+  return rest.stream === true;
+}
+
 // ================= OpenAI / DeepSeek 兼容 =================
 async function handleOpenAIProxy(
   modelConfig: {
@@ -252,22 +280,41 @@ async function handleOpenAIProxy(
   apiKeyRecord: ApiKeyRecord,
   admin: ReturnType<typeof createAdminClient>
 ) {
-  const maxCompletionTokens = resolveMaxCompletionTokens(rest);
+  const reserveContext = buildBillingReserveContext({
+    messages,
+    ...rest,
+  });
   const upstreamModel = resolveOpenAiUpstreamModelForRequest(
     modelConfig.id,
     modelConfig.baseUrl,
     modelConfig.upstreamModelId
   );
   const viaGateway = isVercelAiGatewayBaseUrl(modelConfig.baseUrl);
+  const url = `${modelConfig.baseUrl}/chat/completions`;
+
+  if (isStreamingRequested(rest)) {
+    return handleOpenAIStreamProxy({
+      admin,
+      apiKeyRecord,
+      modelId: modelConfig.id,
+      pricing,
+      reserveContext,
+      url,
+      apiKeyValue,
+      upstreamModel,
+      messages,
+      rest,
+      viaGateway,
+    });
+  }
 
   const result = await executeWithBilling(
     admin,
     apiKeyRecord,
     modelConfig.id,
     pricing,
-    { messages, maxCompletionTokens },
+    reserveContext,
     async () => {
-      const url = `${modelConfig.baseUrl}/chat/completions`;
       let response: Response;
       try {
         response = await upstreamFetch(url, {
@@ -357,12 +404,14 @@ async function handleAnthropicProxy(
       ? Math.min(max_tokens, 8192)
       : DEFAULT_MAX_COMPLETION_TOKENS;
 
+  const reserveContext = buildBillingReserveContext(body);
+
   const result = await executeWithBilling(
     admin,
     apiKeyRecord,
     modelConfig.id,
     pricing,
-    { messages, maxCompletionTokens },
+    reserveContext,
     async () => {
       const url = `${modelConfig.baseUrl}/messages`;
 
@@ -412,14 +461,17 @@ async function handleGeminiProxy(
   admin: ReturnType<typeof createAdminClient>,
   apiKeyValue: string
 ) {
-  const maxCompletionTokens = DEFAULT_MAX_COMPLETION_TOKENS;
+  const reserveContext = buildBillingReserveContext({
+    messages,
+    max_tokens: DEFAULT_MAX_COMPLETION_TOKENS,
+  });
 
   const result = await executeWithBilling(
     admin,
     apiKeyRecord,
     modelConfig.id,
     pricing,
-    { messages, maxCompletionTokens },
+    reserveContext,
     async () => {
       const geminiContents = convertMessagesToGemini(
         messages as Array<{ role: string; content: string }>
@@ -436,7 +488,7 @@ async function handleGeminiProxy(
             contents: geminiContents,
             generationConfig: {
               temperature: 0.7,
-              maxOutputTokens: maxCompletionTokens,
+              maxOutputTokens: reserveContext.maxCompletionTokens,
             },
           }),
         });

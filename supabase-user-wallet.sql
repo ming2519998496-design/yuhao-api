@@ -100,15 +100,13 @@ RETURNS void AS $$
 DECLARE
   v_user_id UUID;
   v_refund DECIMAL;
+  v_extra DECIMAL;
 BEGIN
   IF p_reserved IS NULL OR p_reserved <= 0 THEN
     RAISE EXCEPTION 'settle_balance: reserved must be positive';
   END IF;
   IF p_actual IS NULL OR p_actual < 0 THEN
     RAISE EXCEPTION 'settle_balance: actual must be non-negative';
-  END IF;
-  IF p_actual > p_reserved THEN
-    RAISE EXCEPTION 'settle_balance: actual exceeds reserved';
   END IF;
 
   SELECT user_id INTO v_user_id
@@ -119,11 +117,21 @@ BEGIN
     RAISE EXCEPTION 'settle_balance: api key not found';
   END IF;
 
-  v_refund := ROUND((p_reserved - p_actual)::numeric, 2);
+  IF p_actual > p_reserved THEN
+    v_extra := ROUND((p_actual - p_reserved)::numeric, 2);
+    UPDATE public.profiles
+    SET balance = ROUND((balance - v_extra)::numeric, 2)
+    WHERE id = v_user_id AND balance >= v_extra;
 
-  UPDATE public.profiles
-  SET balance = ROUND((balance + v_refund)::numeric, 2)
-  WHERE id = v_user_id;
+    IF NOT FOUND THEN
+      RAISE EXCEPTION 'settle_balance: insufficient balance for overage';
+    END IF;
+  ELSE
+    v_refund := ROUND((p_reserved - p_actual)::numeric, 2);
+    UPDATE public.profiles
+    SET balance = ROUND((balance + v_refund)::numeric, 2)
+    WHERE id = v_user_id;
+  END IF;
 
   UPDATE public.api_keys
   SET

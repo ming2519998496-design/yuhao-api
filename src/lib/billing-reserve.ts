@@ -20,9 +20,36 @@ export class BillingError extends Error {
   }
 }
 
-/** 从 messages 粗估 prompt tokens（字符数 / 4，至少 100） */
-export function estimatePromptTokens(messages: unknown): number {
-  const text = JSON.stringify(messages ?? "");
+export type BillingReserveContext = {
+  messages: unknown;
+  maxCompletionTokens: number;
+  tools?: unknown;
+  tool_choice?: unknown;
+  /** Anthropic system prompt */
+  system?: unknown;
+};
+
+/** 从请求体构建预扣费上下文（含 tools / tool_choice） */
+export function buildBillingReserveContext(
+  body: Record<string, unknown>
+): BillingReserveContext {
+  const { messages, system, tools, tool_choice, ...rest } = body;
+  return {
+    messages,
+    maxCompletionTokens: resolveMaxCompletionTokens(rest),
+    tools,
+    tool_choice,
+    system,
+  };
+}
+
+/** 从 messages + tools 等粗估 prompt tokens（字符数 / 4，至少 100） */
+export function estimatePromptTokens(context: BillingReserveContext): number {
+  const parts: unknown[] = [context.messages ?? ""];
+  if (context.tools != null) parts.push(context.tools);
+  if (context.tool_choice != null) parts.push(context.tool_choice);
+  if (context.system != null) parts.push(context.system);
+  const text = JSON.stringify(parts);
   return Math.max(100, Math.ceil(text.length / 4));
 }
 
@@ -39,11 +66,11 @@ export function resolveMaxCompletionTokens(
 
 /** 按 prompt + max completion 估算本次最大费用（元，向上取整到分） */
 export function estimateMaxRequestCost(
-  messages: unknown,
-  maxCompletionTokens: number,
+  context: BillingReserveContext,
   pricing: ModelPricing
 ): number {
-  const promptTokens = estimatePromptTokens(messages);
+  const promptTokens = estimatePromptTokens(context);
+  const maxCompletionTokens = context.maxCompletionTokens;
   const raw =
     (promptTokens / 1_000_000) * pricing.inputPerMillion +
     (maxCompletionTokens / 1_000_000) * pricing.outputPerMillion;
@@ -166,17 +193,13 @@ export async function executeWithBilling(
   apiKeyRecord: { id: string; user_id: string },
   modelId: string,
   pricing: ModelPricing,
-  reserveContext: { messages: unknown; maxCompletionTokens: number },
+  reserveContext: BillingReserveContext,
   runUpstream: () => Promise<UpstreamResult>
 ): Promise<
   | { ok: true; status: number; data: unknown; billing?: BillingMeta }
   | { ok: false; response: Response }
 > {
-  const reservedAmount = estimateMaxRequestCost(
-    reserveContext.messages,
-    reserveContext.maxCompletionTokens,
-    pricing
-  );
+  const reservedAmount = estimateMaxRequestCost(reserveContext, pricing);
 
   if (reservedAmount <= 0) {
     const result = await runUpstream();
@@ -258,6 +281,140 @@ export async function executeWithBilling(
       console.error("上游异常后释放冻结失败:", releaseErr);
     }
     throw e;
+  }
+}
+
+export type BillingReservation =
+  | { ok: true; reservedAmount: number }
+  | { ok: false; response: Response };
+
+/** 预扣余额；金额为 0 时跳过冻结 */
+export async function reserveForRequest(
+  admin: AdminClient,
+  keyId: string,
+  reserveContext: BillingReserveContext,
+  pricing: ModelPricing
+): Promise<BillingReservation> {
+  const reservedAmount = estimateMaxRequestCost(reserveContext, pricing);
+  if (reservedAmount <= 0) {
+    return { ok: true, reservedAmount: 0 };
+  }
+
+  try {
+    await reserveBalance(admin, keyId, reservedAmount);
+    return { ok: true, reservedAmount };
+  } catch (e) {
+    if (e instanceof BillingError && e.isInsufficientBalance()) {
+      return {
+        ok: false,
+        response: Response.json(
+          {
+            error: {
+              message: "额度不足，请充值",
+              type: "insufficient_quota",
+            },
+          },
+          { status: 402 }
+        ),
+      };
+    }
+    throw e;
+  }
+}
+
+export async function finalizeRequestBilling(
+  admin: AdminClient,
+  apiKeyRecord: { id: string; user_id: string },
+  modelId: string,
+  pricing: ModelPricing,
+  reservedAmount: number,
+  usage: TokenUsage | undefined,
+  upstreamOk: boolean,
+  options?: { fallbackCostYuan?: number }
+): Promise<
+  | { ok: true; billing?: BillingMeta }
+  | { ok: false; response: Response }
+> {
+  if (reservedAmount <= 0) {
+    return { ok: true };
+  }
+
+  if (!upstreamOk) {
+    await releaseBalance(admin, apiKeyRecord.id, reservedAmount);
+    return { ok: true };
+  }
+
+  let actualCost: number;
+  let logUsagePayload: TokenUsage;
+
+  if (usage) {
+    actualCost = calculateUsageCost(usage, pricing);
+    logUsagePayload = usage;
+  } else if (
+    options?.fallbackCostYuan != null &&
+    options.fallbackCostYuan > 0
+  ) {
+    actualCost = Math.min(options.fallbackCostYuan, reservedAmount);
+    logUsagePayload = { prompt_tokens: 0, completion_tokens: 0 };
+  } else {
+    await releaseBalance(admin, apiKeyRecord.id, reservedAmount);
+    return { ok: true };
+  }
+
+  try {
+    await settleBalance(
+      admin,
+      apiKeyRecord.id,
+      reservedAmount,
+      actualCost
+    );
+    await logUsage(
+      admin,
+      apiKeyRecord,
+      modelId,
+      logUsagePayload,
+      actualCost
+    );
+    const balanceCny = await fetchUserBalance(admin, apiKeyRecord.user_id);
+    return {
+      ok: true,
+      billing: {
+        costCny: actualCost,
+        balanceCny: Number(balanceCny.toFixed(2)),
+      },
+    };
+  } catch (e) {
+    try {
+      await releaseBalance(admin, apiKeyRecord.id, reservedAmount);
+    } catch (releaseErr) {
+      console.error("结算失败后释放冻结也失败:", releaseErr);
+    }
+    console.error("结算失败:", e);
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            message: "计费失败，请稍后重试",
+            type: "billing_error",
+          },
+        },
+        { status: 500 }
+      ),
+    };
+  }
+}
+
+export async function releaseRequestBilling(
+  admin: AdminClient,
+  keyId: string,
+  reservedAmount: number
+): Promise<void> {
+  if (reservedAmount <= 0) return;
+  try {
+    await releaseBalance(admin, keyId, reservedAmount);
+  } catch (releaseErr) {
+    console.error("释放冻结失败:", releaseErr);
   }
 }
 

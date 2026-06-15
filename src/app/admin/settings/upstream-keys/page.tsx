@@ -6,8 +6,64 @@ import {
   UPSTREAM_PROVIDERS,
   type UpstreamKeysConfig,
 } from "@/lib/upstream-keys-settings";
-import { Eye, EyeOff, KeyRound, Lock, Save, ShieldAlert } from "lucide-react";
+import { Eye, EyeOff, KeyRound, Lock, RefreshCw, Save, ShieldAlert, Wallet } from "lucide-react";
 import { useCallback, useEffect, useState } from "react";
+
+type UpstreamBalanceStatus =
+  | "ok"
+  | "low"
+  | "unavailable"
+  | "not_configured"
+  | "unsupported"
+  | "error";
+
+type BalanceEntry = {
+  provider: string;
+  label: string;
+  status: UpstreamBalanceStatus;
+  message: string;
+  balance?: string;
+  currency?: string;
+  totalUsed?: string;
+  detail?: string;
+  dashboardUrl?: string;
+  checkedAt: string;
+};
+
+function balanceStatusClass(status: UpstreamBalanceStatus): string {
+  switch (status) {
+    case "ok":
+      return "border-emerald-500/30 bg-emerald-500/5";
+    case "low":
+      return "border-amber-500/40 bg-amber-500/10";
+    case "unavailable":
+    case "error":
+      return "border-red-500/30 bg-red-500/5";
+    case "unsupported":
+      return "border-sky-500/30 bg-sky-500/5";
+    default:
+      return "border-border bg-background";
+  }
+}
+
+function balanceStatusLabel(status: UpstreamBalanceStatus): string {
+  switch (status) {
+    case "ok":
+      return "正常";
+    case "low":
+      return "偏低";
+    case "unavailable":
+      return "不可用";
+    case "not_configured":
+      return "未配置";
+    case "unsupported":
+      return "需手动查看";
+    case "error":
+      return "查询失败";
+    default:
+      return status;
+  }
+}
 
 type PublicView = {
   masked: UpstreamKeysConfig;
@@ -26,6 +82,23 @@ export default function AdminUpstreamKeysPage() {
   const [loading, setLoading] = useState(true);
   const [acting, setActing] = useState(false);
   const [message, setMessage] = useState("");
+  const [balances, setBalances] = useState<BalanceEntry[]>([]);
+  const [balanceLoading, setBalanceLoading] = useState(false);
+  const [balanceCheckedAt, setBalanceCheckedAt] = useState<string | null>(null);
+
+  const loadBalances = useCallback(async () => {
+    setBalanceLoading(true);
+    try {
+      const res = await fetch("/api/admin/settings/upstream-keys/balance");
+      const data = await res.json();
+      if (res.ok) {
+        setBalances(data.balances ?? []);
+        setBalanceCheckedAt(data.checkedAt ?? null);
+      }
+    } finally {
+      setBalanceLoading(false);
+    }
+  }, []);
 
   const load = useCallback(async () => {
     const res = await fetch("/api/admin/settings/upstream-keys");
@@ -44,7 +117,8 @@ export default function AdminUpstreamKeysPage() {
 
   useEffect(() => {
     void load();
-  }, [load]);
+    void loadBalances();
+  }, [load, loadBalances]);
 
   function lockView() {
     setUnlocked(false);
@@ -146,7 +220,84 @@ export default function AdminUpstreamKeysPage() {
         {loading ? (
           <p className="text-sm text-muted">加载中...</p>
         ) : (
-          <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
+          <>
+            <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
+              <div className="flex flex-wrap items-start justify-between gap-3">
+                <div>
+                  <h2 className="flex items-center gap-2 font-semibold">
+                    <Wallet className="h-5 w-5 text-accent" />
+                    上游余额 / 状态
+                  </h2>
+                  <p className="mt-1 text-xs text-muted">
+                    DeepSeek 与 Vercel AI Gateway 可实时查余额；Gemini 仅校验 Key 有效，配额请至 AI Studio 查看。
+                    {balanceCheckedAt && (
+                      <>
+                        {" "}
+                        最近查询：
+                        {new Date(balanceCheckedAt).toLocaleString("zh-CN")}
+                      </>
+                    )}
+                  </p>
+                </div>
+                <button
+                  type="button"
+                  disabled={balanceLoading}
+                  onClick={() => void loadBalances()}
+                  className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-accent/5 hover:text-foreground disabled:opacity-50"
+                >
+                  <RefreshCw
+                    className={`h-4 w-4 ${balanceLoading ? "animate-spin" : ""}`}
+                  />
+                  {balanceLoading ? "查询中..." : "刷新余额"}
+                </button>
+              </div>
+
+              <div className="mt-4 grid gap-3 sm:grid-cols-3">
+                {balances.map((item) => (
+                  <div
+                    key={item.provider}
+                    className={`rounded-xl border p-4 ${balanceStatusClass(item.status)}`}
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-sm font-medium">{item.label}</span>
+                      <span className="rounded-full bg-background/80 px-2 py-0.5 text-[10px] font-medium text-muted">
+                        {balanceStatusLabel(item.status)}
+                      </span>
+                    </div>
+                    {item.balance && item.currency && (
+                      <p className="mt-2 text-lg font-semibold tabular-nums">
+                        {item.currency === "USD" ? "$" : ""}
+                        {item.balance}
+                        {item.currency !== "USD" ? ` ${item.currency}` : ""}
+                      </p>
+                    )}
+                    <p className="mt-1 text-xs leading-relaxed text-muted">
+                      {item.message}
+                    </p>
+                    {item.detail && (
+                      <p className="mt-1 text-[11px] text-muted">{item.detail}</p>
+                    )}
+                    {item.totalUsed && (
+                      <p className="mt-1 text-[11px] text-muted">
+                        累计已用 ${item.totalUsed}
+                      </p>
+                    )}
+                    {item.dashboardUrl && (
+                      <a
+                        href={item.dashboardUrl}
+                        target="_blank"
+                        rel="noopener noreferrer"
+                        className="mt-2 inline-block text-xs font-medium text-accent hover:underline"
+                      >
+                        前往充值 / 控制台 →
+                      </a>
+                    )}
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
             <h2 className="flex items-center gap-2 font-semibold">
               <KeyRound className="h-5 w-5 text-accent" />
               厂商密钥
@@ -217,6 +368,7 @@ export default function AdminUpstreamKeysPage() {
               })}
             </div>
           </div>
+          </>
         )}
 
         <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">

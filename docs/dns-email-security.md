@@ -3,7 +3,7 @@
 安全扫描若提示「邮件域缺少 SPF / DMARC」，需在 **域名 DNS**（当前为 Cloudflare）添加记录。  
 代码无法代你改 DNS，请按下列步骤在 Cloudflare Dashboard 手动添加。
 
-> 当前状态（2026-05）：`send.yuhaoapi.com` 已有 Resend 的 SPF/DKIM；**根域** `yuhaoapi.com` 缺 SPF 与 DMARC，扫描器会报中风险。
+> 当前状态：`send.yuhaoapi.com` 已有 Resend 的 SPF/DKIM；根域需有 SPF 与 **DMARC（建议 `p=quarantine`，勿长期 `p=none`）**。
 
 ## 一、SPF（根域 @）
 
@@ -39,17 +39,26 @@ dig TXT yuhaoapi.com +short | grep spf
 1. **Add record**：
    - **Type**：`TXT`
    - **Name**：`_dmarc`
-   - **Content**（把收件邮箱改成你能收到的地址，建议 Google Workspace 邮箱）：
+   - **Content**（推荐生产策略，把收件邮箱改成你能收到的地址）：
 
      ```txt
-     v=DMARC1; p=none; rua=mailto:dmarc@yuhaoapi.com; adkim=s; aspf=r
+     v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc@yuhaoapi.com; adkim=s; aspf=r
      ```
+
+   若刚接入 SPF/DKIM、尚未观察过报告，可先用监控模式 1～2 周：
+
+   ```txt
+   v=DMARC1; p=none; rua=mailto:dmarc@yuhaoapi.com; adkim=s; aspf=r
+   ```
+
+   确认 Resend / Google 邮件均 `dmarc=pass` 后，**务必升级为 `p=quarantine`**；稳定后再考虑 `p=reject`。
 
 2. **Save**
 
 说明：
 
-- 先用 `p=none` 监控 1～2 周，确认 Resend / Google 邮件均 `dmarc=pass` 后，可改为 `p=quarantine` 或 `p=reject`
+- `p=none` 仅收集报告，**不会拦截伪造邮件**（安全扫描会提示中风险）
+- `p=quarantine` 将未通过验证的邮件放入垃圾箱；`p=reject` 直接拒收
 - `rua` 会收到 XML 聚合报告（可忽略或交给监控工具）
 
 验证：
@@ -99,6 +108,6 @@ node scripts/check-dns-email-security.mjs yuhaoapi.com
 | 类型 | Name | 值（示例） |
 |------|------|------------|
 | TXT | `@` | `v=spf1 include:_spf.google.com include:amazonses.com ~all` |
-| TXT | `_dmarc` | `v=DMARC1; p=none; rua=mailto:dmarc@yuhaoapi.com; adkim=s; aspf=r` |
+| TXT | `_dmarc` | `v=DMARC1; p=quarantine; pct=100; rua=mailto:dmarc@yuhaoapi.com; adkim=s; aspf=r` |
 | TXT | `resend._domainkey` | （Resend 控制台已有，勿删） |
 | TXT | `send` | `v=spf1 include:amazonses.com ~all`（Resend 已有，勿删） |

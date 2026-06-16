@@ -1,12 +1,13 @@
 import type { NextConfig } from "next";
-import { SECURITY_RESPONSE_HEADERS } from "./src/lib/security-headers";
+import { BASE_SECURITY_HEADERS } from "./src/lib/security-headers";
 
 const nextConfig: NextConfig = {
   async headers() {
+    // CSP 与页面 CORS 由 middleware 处理；此处仅为静态资源兜底
     return [
       {
-        source: "/:path*",
-        headers: SECURITY_RESPONSE_HEADERS,
+        source: "/api/:path*",
+        headers: BASE_SECURITY_HEADERS,
       },
     ];
   },

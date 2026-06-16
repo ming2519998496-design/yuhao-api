@@ -1,28 +1,49 @@
 /**
  * 浏览器安全响应头（安全扫描 / 最佳实践）
- * 在 next.config.ts 中通过 headers() 应用到全站。
+ * 页面 CSP 由 middleware 动态注入 nonce；API 路由不发送 CSP。
  */
 
-const cspDirectives = [
-  "default-src 'self'",
-  // Next.js 构建产物；开发模式可能需要 unsafe-eval
-  "script-src 'self' 'unsafe-inline' 'unsafe-eval'",
-  // Tailwind / Next.js 内联样式
-  "style-src 'self' 'unsafe-inline'",
-  "img-src 'self' data: blob: https://*.supabase.co",
-  "font-src 'self' data:",
-  "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
-  "frame-ancestors 'none'",
-  "base-uri 'self'",
-  "form-action 'self'",
-  "object-src 'none'",
-  "upgrade-insecure-requests",
-];
+export type CspOptions = {
+  /** 每请求随机 nonce，供后续 Script 组件使用 */
+  nonce?: string;
+  isDev?: boolean;
+};
 
-export const CONTENT_SECURITY_POLICY = cspDirectives.join("; ");
+export function buildContentSecurityPolicy(options: CspOptions = {}): string {
+  const isDev = options.isDev ?? process.env.NODE_ENV === "development";
+  const scriptParts = ["'self'"];
 
-export const SECURITY_RESPONSE_HEADERS: { key: string; value: string }[] = [
-  { key: "Content-Security-Policy", value: CONTENT_SECURITY_POLICY },
+  if (options.nonce) {
+    scriptParts.push(`'nonce-${options.nonce}'`);
+  }
+
+  if (isDev) {
+    // 开发模式：Turbopack / HMR 仍需 inline 与 eval
+    scriptParts.push("'unsafe-inline'", "'unsafe-eval'");
+  } else {
+    // 生产：去掉 unsafe-eval；Next.js 内联 bootstrap 暂保留 unsafe-inline
+    scriptParts.push("'unsafe-inline'");
+  }
+
+  const directives = [
+    "default-src 'self'",
+    `script-src ${scriptParts.join(" ")}`,
+    "style-src 'self' 'unsafe-inline'",
+    "img-src 'self' data: blob: https://*.supabase.co",
+    "font-src 'self' data:",
+    "connect-src 'self' https://*.supabase.co wss://*.supabase.co",
+    "frame-ancestors 'none'",
+    "base-uri 'self'",
+    "form-action 'self'",
+    "object-src 'none'",
+    "upgrade-insecure-requests",
+  ];
+
+  return directives.join("; ");
+}
+
+/** 不含 CSP，供 JSON API 响应使用 */
+export const BASE_SECURITY_HEADERS: { key: string; value: string }[] = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   { key: "Referrer-Policy", value: "strict-origin-when-cross-origin" },

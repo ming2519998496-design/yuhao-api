@@ -35,8 +35,16 @@ function hasDmarc(records) {
   return records.some((r) => r.toLowerCase().startsWith("v=dmarc1"));
 }
 
+function dmarcPolicy(records) {
+  const rec = records.find((r) => r.toLowerCase().startsWith("v=dmarc1"));
+  if (!rec) return null;
+  const m = rec.match(/\bp\s*=\s*(\w+)/i);
+  return m ? m[1].toLowerCase() : null;
+}
+
 const rootTxt = digTxt(domain);
 const dmarcTxt = digTxt(`_dmarc.${domain}`);
+const dmarcPol = dmarcPolicy(dmarcTxt);
 const dkimTxt = digTxt(`resend._domainkey.${domain}`);
 const sendSpf = digTxt(`send.${domain}`);
 
@@ -48,8 +56,12 @@ const checks = [
   },
   {
     name: `DMARC (_dmarc.${domain})`,
-    ok: hasDmarc(dmarcTxt),
-    hint: '添加 TXT _dmarc → v=DMARC1; p=none; rua=mailto:dmarc@yuhaoapi.com; ...',
+    ok: hasDmarc(dmarcTxt) && dmarcPol && dmarcPol !== "none",
+    warn: hasDmarc(dmarcTxt) && dmarcPol === "none",
+    hint:
+      dmarcPol === "none"
+        ? "将 _dmarc 的 p=none 升级为 p=quarantine（见 docs/dns-email-security.md）"
+        : "添加 TXT _dmarc → v=DMARC1; p=quarantine; rua=mailto:dmarc@yuhaoapi.com; ...",
   },
   {
     name: `Resend DKIM (resend._domainkey.${domain})`,
@@ -66,14 +78,24 @@ const checks = [
 console.log(`\n邮件防伪 DNS 检查：${domain}\n`);
 
 let failed = 0;
+let warned = 0;
 for (const c of checks) {
-  const mark = c.ok ? "✓" : "✗";
+  const mark = c.ok ? "✓" : c.warn ? "!" : "✗";
   console.log(`  ${mark} ${c.name}`);
-  if (!c.ok) {
+  if (c.warn) {
+    warned++;
+    console.log(`      ⚠ ${c.hint}`);
+  } else if (!c.ok) {
     failed++;
     console.log(`      → ${c.hint}`);
   }
 }
 
-console.log(failed === 0 ? "\n全部通过。\n" : `\n${failed} 项待修复，见 docs/dns-email-security.md\n`);
+if (failed === 0 && warned === 0) {
+  console.log("\n全部通过。\n");
+} else if (failed === 0) {
+  console.log(`\n${warned} 项建议优化（见 docs/dns-email-security.md）\n`);
+} else {
+  console.log(`\n${failed} 项待修复，见 docs/dns-email-security.md\n`);
+}
 process.exit(failed === 0 ? 0 : 1);

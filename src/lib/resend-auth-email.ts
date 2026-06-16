@@ -29,6 +29,7 @@ export function formatResendError(message: string, to?: string): string {
 const SUBJECTS: Record<string, string> = {
   signup: "遇好API 注册验证码",
   recovery: "遇好API 修改密码验证码",
+  forgot_password: "遇好API 找回密码验证码",
   reauthentication: "遇好API 修改密码验证码",
   magic_link: "遇好API 验证码",
   email_change: "遇好API 更换邮箱验证码",
@@ -44,7 +45,9 @@ function buildBody(action: string, token: string, tokenNew?: string): string {
       ? "您的注册验证码是："
       : action === "recovery" || action === "reauthentication"
         ? "您的修改密码验证码是："
-        : "您的验证码是：",
+        : action === "forgot_password"
+          ? "您的找回密码验证码是："
+          : "您的验证码是：",
     "",
     token,
     "",

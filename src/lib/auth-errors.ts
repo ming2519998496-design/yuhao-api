@@ -56,7 +56,7 @@ export function formatAuthError(message: string): string {
     return "未配置短信服务商。请在 Supabase Dashboard → Authentication → Providers → Phone 中填写 Twilio（或启用 Send SMS Hook 对接阿里云/腾讯云）。详见项目 docs/supabase-sms-providers.md";
   }
   if (m.includes("hook: 404") || m.includes("status code returned from hook")) {
-    return "邮件 Hook 未连通。注册已改为 Resend 直连发信，请刷新页面后重试；若仍失败请检查 RESEND_API_KEY。";
+    return "邮件 Hook 未连通。请使用本站「发送验证码」按钮（已改为 Resend 直连发信）；若仍失败请检查 Vercel 环境变量 RESEND_API_KEY。";
   }
   if (
     m.includes("already been registered") ||

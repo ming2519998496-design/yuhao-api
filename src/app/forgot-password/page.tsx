@@ -27,20 +27,28 @@ export default function ForgotPasswordPage() {
 
   async function sendRecoveryOtp(): Promise<boolean> {
     setError("");
+    setSuccess("");
     if (!email) {
       setError("请输入注册邮箱");
       return false;
     }
-    const { error: otpError } = await supabase.auth.signInWithOtp({
-      email,
-      options: { shouldCreateUser: false },
+
+    const res = await fetch("/api/auth/forgot-password/send-otp", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ email }),
     });
-    if (otpError) {
-      setError(getAuthErrorMessage(otpError));
+    const data = await res.json().catch(() => ({}));
+    if (!res.ok) {
+      setError(data.error ?? "发送验证码失败");
       return false;
     }
+
     setStep("reset");
-    setSuccess("验证码已发送，请查收邮件后设置新密码");
+    setSuccess(
+      (data.message as string | undefined) ??
+        "验证码已发送，请查收邮件后设置新密码"
+    );
     return true;
   }
 

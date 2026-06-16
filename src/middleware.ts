@@ -17,14 +17,12 @@ function applyBaseSecurityHeaders(response: NextResponse) {
 
 function applyPageSecurityHeaders(
   request: NextRequest,
-  response: NextResponse,
-  nonce: string
+  response: NextResponse
 ) {
   applyBaseSecurityHeaders(response);
   response.headers.set(
     "Content-Security-Policy",
     buildContentSecurityPolicy({
-      nonce,
       isDev: process.env.NODE_ENV === "development",
     })
   );
@@ -92,15 +90,8 @@ export function middleware(request: NextRequest) {
     return response;
   }
 
-  const nonce = Buffer.from(crypto.randomUUID()).toString("base64");
-  const requestHeaders = new Headers(request.headers);
-  requestHeaders.set("x-nonce", nonce);
-
-  const response = NextResponse.next({
-    request: { headers: requestHeaders },
-  });
-
-  applyPageSecurityHeaders(request, response, nonce);
+  const response = NextResponse.next();
+  applyPageSecurityHeaders(request, response);
   return response;
 }
 

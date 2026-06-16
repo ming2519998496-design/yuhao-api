@@ -38,7 +38,7 @@ npm run db:verify   # 自动验证 RLS / 扣费函数 / 触发器
 
 | 项 | 说明 |
 |----|------|
-| `Content-Security-Policy` | 生产环境已去掉 `unsafe-eval`；每请求注入 `nonce` |
+| `Content-Security-Policy` | 生产环境已去掉 `unsafe-eval`；暂保留 `unsafe-inline`（Next.js 兼容） |
 | `Access-Control-Allow-Origin` | API 仅允许 `ALLOWED_ORIGINS` 白名单，禁止 `*` |
 | `X-Frame-Options: DENY` | 防点击劫持 |
 | `Strict-Transport-Security` | 强制 HTTPS |

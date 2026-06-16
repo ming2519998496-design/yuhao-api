@@ -1,11 +1,9 @@
 /**
  * 浏览器安全响应头（安全扫描 / 最佳实践）
- * 页面 CSP 由 middleware 动态注入 nonce；API 路由不发送 CSP。
+ * 页面 CSP 由 middleware 设置；API 路由不发送 CSP。
  */
 
 export type CspOptions = {
-  /** 每请求随机 nonce，供后续 Script 组件使用 */
-  nonce?: string;
   isDev?: boolean;
 };
 
@@ -13,15 +11,12 @@ export function buildContentSecurityPolicy(options: CspOptions = {}): string {
   const isDev = options.isDev ?? process.env.NODE_ENV === "development";
   const scriptParts = ["'self'"];
 
-  if (options.nonce) {
-    scriptParts.push(`'nonce-${options.nonce}'`);
-  }
-
   if (isDev) {
     // 开发模式：Turbopack / HMR 仍需 inline 与 eval
     scriptParts.push("'unsafe-inline'", "'unsafe-eval'");
   } else {
-    // 生产：去掉 unsafe-eval；Next.js 内联 bootstrap 暂保留 unsafe-inline
+    // 生产：去掉 unsafe-eval；保留 unsafe-inline（Next.js 内联脚本尚未接 nonce）
+    // 注意：script-src 含 nonce 时浏览器会忽略 unsafe-inline，会导致整站 JS 被拦、白屏
     scriptParts.push("'unsafe-inline'");
   }
 

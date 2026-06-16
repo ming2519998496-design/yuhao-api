@@ -1,8 +1,13 @@
 /** 邀请活动规则（展示与结算共用） */
 
+export const SIGNUP_TRIAL_BONUS_YUAN = 1;
+
 export const FIRST_RECHARGE_MIN_YUAN = 50;
 export const NEW_USER_FIRST_RECHARGE_BONUS_YUAN = 5;
 export const REFERRAL_REWARD_RATE = 0.05;
+
+export const SIGNUP_TRIAL_BONUS_LINE =
+  "新用户注册赠送 ¥1 体验金，注册成功后自动入账；通过好友邀请链接注册同样享有。";
 
 export const REFERRAL_PROGRAM_HEADLINE =
   "新用户首充满 ¥50 送 ¥5 余额。";

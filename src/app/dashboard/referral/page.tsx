@@ -5,6 +5,7 @@ import {
   REFERRAL_PROGRAM_HEADLINE,
   REFERRAL_PROGRAM_INVITE_LINE,
   REFERRAL_PROGRAM_NOTES,
+  SIGNUP_TRIAL_BONUS_LINE,
 } from "@/lib/referral-program";
 import {
   Copy,
@@ -89,6 +90,9 @@ export default function ReferralPage() {
         <div className="rounded-2xl border border-accent/25 bg-accent/5 p-5 shadow-sm">
           <h3 className="text-sm font-semibold text-foreground">活动规则</h3>
           <p className="mt-3 text-sm leading-relaxed text-foreground">
+            {SIGNUP_TRIAL_BONUS_LINE}
+          </p>
+          <p className="mt-2 text-sm leading-relaxed text-foreground">
             {REFERRAL_PROGRAM_HEADLINE}
           </p>
           <p className="mt-2 text-sm leading-relaxed text-foreground">

@@ -12,6 +12,7 @@ import {
 } from "@/lib/account-frozen";
 import { getAdminEmailSet } from "@/lib/admin-policy";
 import { bindReferrer, ensureAffCode } from "@/lib/referral";
+import { grantSignupTrialBonus } from "@/lib/signup-bonus";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { NextRequest, NextResponse } from "next/server";
 
@@ -76,6 +77,15 @@ export async function POST(request: NextRequest) {
     await bindReferrer(user.id, aff);
   } catch (e) {
     console.error("[sync-profile] referral setup:", e);
+  }
+
+  try {
+    await grantSignupTrialBonus(user.id, {
+      userCreatedAt: user.created_at,
+      role,
+    });
+  } catch (e) {
+    console.error("[sync-profile] signup bonus:", e);
   }
 
   const isAdmin = await isUserAdmin(user);

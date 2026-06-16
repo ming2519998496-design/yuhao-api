@@ -15,7 +15,7 @@ BEGIN
   ) THEN
     ALTER TABLE public.balance_adjustment_logs
       ADD CONSTRAINT balance_adjustment_logs_kind_check
-      CHECK (kind IN ('admin', 'recharge'));
+      CHECK (kind IN ('admin', 'recharge', 'signup'));
   END IF;
 END $$;
 

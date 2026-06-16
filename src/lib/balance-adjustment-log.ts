@@ -1,6 +1,6 @@
 import { createAdminClient } from "@/lib/supabase-admin";
 
-export type BalanceAdjustmentKind = "admin" | "recharge";
+export type BalanceAdjustmentKind = "admin" | "recharge" | "signup";
 
 function isMissingKindColumn(message: string): boolean {
   return /kind|column.*does not exist/i.test(message);

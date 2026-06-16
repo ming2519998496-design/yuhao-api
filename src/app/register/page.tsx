@@ -112,7 +112,7 @@ export default function RegisterPage() {
   return (
     <AuthCard
       title="创建账户"
-      subtitle="使用邮箱注册"
+      subtitle="使用邮箱注册，新用户赠送 ¥1 体验金"
       footer={
         <p className="mt-6 text-center text-sm text-muted">
           已有账户？{" "}

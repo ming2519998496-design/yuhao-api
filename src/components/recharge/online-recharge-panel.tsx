@@ -28,7 +28,6 @@ type OnlineConfig = {
 };
 
 type Props = {
-  hasPendingOrder: boolean;
   pendingOnlineOrder?: {
     orderNo: string;
     payRedirectUrl: string | null;
@@ -50,7 +49,6 @@ function formatCountdown(expiredAt: string | null): string | null {
 }
 
 export function OnlineRechargePanel({
-  hasPendingOrder,
   pendingOnlineOrder,
   onPaymentComplete,
   onRecordsChange,
@@ -168,11 +166,6 @@ export function OnlineRechargePanel({
   useEffect(() => () => stopPolling(), [stopPolling]);
 
   async function handleCreatePayment() {
-    if (hasPendingOrder && !pendingOnlineOrder?.orderNo) {
-      setMsg("您已有待处理的充值订单，请等待处理完成后再试");
-      return;
-    }
-
     const value = Number(amount);
     if (!Number.isFinite(value) || value > MAX_AMOUNT) {
       setMsg(`充值金额不能超过 ¥${MAX_AMOUNT}`);
@@ -211,8 +204,6 @@ export function OnlineRechargePanel({
   }
 
   const onlineEnabled = config?.enabled === true;
-  const blockedByOtherPending =
-    hasPendingOrder && !pendingOnlineOrder?.orderNo;
 
   return (
     <>
@@ -310,12 +301,6 @@ export function OnlineRechargePanel({
               ))}
             </div>
 
-            {blockedByOtherPending && (
-              <p className="mt-3 text-xs text-amber-800">
-                您有一笔待处理的人工充值订单，请等待管理员确认后再发起在线支付。
-              </p>
-            )}
-
             {msg && (
               <p
                 className={cn(
@@ -331,11 +316,7 @@ export function OnlineRechargePanel({
 
             <button
               type="button"
-              disabled={
-                submitting ||
-                blockedByOtherPending ||
-                payStatus === "pending"
-              }
+              disabled={submitting || payStatus === "pending"}
               onClick={() => void handleCreatePayment()}
               className="mt-4 w-full rounded-xl bg-gradient-to-r from-accent to-accent-dark py-3.5 text-sm font-semibold text-white shadow-lg shadow-accent/20 transition-all hover:brightness-110 disabled:cursor-not-allowed disabled:opacity-50"
             >

@@ -65,11 +65,12 @@ export async function POST(request: NextRequest) {
     .from("recharge_records")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .eq("source", "online");
 
   if ((pendingCount ?? 0) > 0) {
     return NextResponse.json(
-      { error: "您已有待支付的充值订单，请完成或等待过期后再试" },
+      { error: "您已有待支付的在线订单，请完成或等待过期后再试" },
       { status: 400 }
     );
   }

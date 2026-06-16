@@ -65,16 +65,17 @@ export async function POST(request: NextRequest) {
 
   const admin = createAdminClient();
 
-  // 同一用户仅允许一笔待确认订单，避免重复刷单
+  // 同一用户仅允许一笔待确认的人工转账订单
   const { count: pendingCount } = await admin
     .from("recharge_records")
     .select("id", { count: "exact", head: true })
     .eq("user_id", user.id)
-    .eq("status", "pending");
+    .eq("status", "pending")
+    .eq("source", "manual");
 
   if ((pendingCount ?? 0) > 0) {
     return NextResponse.json(
-      { error: "您已有待确认的充值订单，请等待管理员处理后再提交" },
+      { error: "您已有一笔待确认的人工转账订单，请等待管理员处理后再提交" },
       { status: 400 }
     );
   }

@@ -214,10 +214,6 @@ export default function RechargePage() {
 
   function openManualModal() {
     if (!activeAccount?.enabled) return;
-    if (pendingOnlineRecord) {
-      setSubmitMsg("请先完成或等待在线支付订单过期，再提交人工转账");
-      return;
-    }
     setSubmitMsg("");
     setLastOrderNo("");
     setProofFile(null);
@@ -274,7 +270,6 @@ export default function RechargePage() {
         </div>
 
         <OnlineRechargePanel
-          hasPendingOrder={hasPendingRecords}
           pendingOnlineOrder={
             pendingOnlineRecord
               ? {
@@ -327,13 +322,6 @@ export default function RechargePage() {
             </p>
           )}
 
-          {pendingOnlineRecord && (
-            <p className="mt-4 rounded-xl border border-amber-500/30 bg-amber-500/10 px-3 py-2 text-xs text-amber-900">
-              您有一笔进行中的在线支付订单（{pendingOnlineRecord.orderNo}
-              ），请先完成支付或等待过期后再提交人工转账。
-            </p>
-          )}
-
           {submitMsg && !qrModalOpen && (
             <p
               className={`mt-4 text-xs ${
@@ -354,7 +342,6 @@ export default function RechargePage() {
               submitting ||
               enabledMethods.length === 0 ||
               !activeAccount?.enabled ||
-              Boolean(pendingOnlineRecord) ||
               Boolean(pendingManualRecord)
             }
             onClick={openManualModal}

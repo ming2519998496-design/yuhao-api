@@ -64,4 +64,21 @@ node scripts/check-dns-email-security.mjs yuhaoapi.com
 
 - 收款配置 JSON 勿与公开二维码同桶（见审计「高」级项）
 - 为 `/admin` 增加 `middleware.ts` 会话校验
-- Chat API 速率限制与原子扣费
+
+## 滥用防护（API 盗刷 / 体验金薅羊毛）
+
+在 Supabase SQL Editor 执行 [`supabase-rate-limit.sql`](../supabase-rate-limit.sql)（可与 `supabase-signup-bonus.sql` 一并执行）。
+
+| 机制 | 默认阈值 | 说明 |
+|------|----------|------|
+| API Key 限流 | 60 次/分钟 | `/api/v1/chat/completions`、`/api/v1/generations` |
+| 用户账户限流 | 120 次/分钟 | 同一用户下所有 Key 合计 |
+| 客户端 IP 限流 | 180 次/分钟 | 盗 Key 后仍受 IP 约束 |
+| 注册验证码 | 5 次/小时/IP | `/api/auth/register/send-otp` |
+| 体验金 | 3 次/24h/IP | 同一 IP 最多 3 个账号领 ¥1 |
+
+环境变量见 `.env.example` 中 `API_RATE_LIMIT_*`、`REGISTER_OTP_*`、`SIGNUP_BONUS_*`。
+
+未执行 SQL 时限流降级为单实例内存计数（仍有一定防护，多实例下较弱）。
+
+后续可选：Cloudflare Turnstile（注册/登录）、Key 异常告警、管理员一键冻结。

@@ -28,6 +28,11 @@ import {
 } from "@/lib/upstream-gateway";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { isUserFrozen } from "@/lib/account-frozen";
+import { getClientIp } from "@/lib/client-ip";
+import {
+  enforceApiRateLimits,
+  rateLimit429Response,
+} from "@/lib/rate-limit";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
@@ -92,6 +97,18 @@ export async function POST(request: NextRequest) {
           },
         },
         { status: 403 }
+      );
+    }
+
+    const rateLimit = await enforceApiRateLimits({
+      keyHash,
+      userId: apiKey.user_id,
+      clientIp: getClientIp(request),
+    });
+    if (!rateLimit.allowed) {
+      return rateLimit429Response(
+        rateLimit.retryAfterSec,
+        "API 调用过于频繁，请稍后再试"
       );
     }
 

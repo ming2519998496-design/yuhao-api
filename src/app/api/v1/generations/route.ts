@@ -1,6 +1,12 @@
 import { authenticateApiKeyRequest } from "@/lib/api-key-auth";
 import { executeWithFixedBilling } from "@/lib/billing-reserve";
+import { getClientIp } from "@/lib/client-ip";
 import { runGoogleGeneration } from "@/lib/google-generations";
+import {
+  enforceApiRateLimits,
+  rateLimit429Response,
+} from "@/lib/rate-limit";
+import crypto from "crypto";
 import {
   getModelApiKind,
   isChatModel,
@@ -95,6 +101,26 @@ export async function POST(request: NextRequest) {
     if (!auth.ok) return auth.response;
 
     const { apiKey, modelConfig } = auth;
+
+    const authHeader = request.headers.get("authorization");
+    const rawKey = authHeader?.startsWith("Bearer ")
+      ? authHeader.slice(7).trim()
+      : "";
+    const keyHash = rawKey
+      ? crypto.createHash("sha256").update(rawKey).digest("hex")
+      : apiKey.id;
+
+    const rateLimit = await enforceApiRateLimits({
+      keyHash,
+      userId: apiKey.user_id,
+      clientIp: getClientIp(request),
+    });
+    if (!rateLimit.allowed) {
+      return rateLimit429Response(
+        rateLimit.retryAfterSec,
+        "API 调用过于频繁，请稍后再试"
+      );
+    }
 
     if (isChatModel(modelConfig)) {
       return NextResponse.json(

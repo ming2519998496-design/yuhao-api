@@ -1,4 +1,10 @@
 import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { getClientIp, normalizeIpForBucket } from "@/lib/client-ip";
+import {
+  consumeRateLimit,
+  rateLimit429Response,
+  REGISTER_RATE_LIMITS,
+} from "@/lib/rate-limit";
 import { sendResendAuthEmail } from "@/lib/resend-auth-email";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
@@ -23,6 +29,19 @@ export async function POST(request: Request) {
   }
   if (password.length < 8) {
     return NextResponse.json({ error: "密码至少 8 位" }, { status: 400 });
+  }
+
+  const clientIp = normalizeIpForBucket(getClientIp(request));
+  const otpLimit = await consumeRateLimit({
+    bucketKey: `register:otp:ip:${clientIp}`,
+    max: REGISTER_RATE_LIMITS.otpPerIpPerHour,
+    windowSeconds: 3600,
+  });
+  if (!otpLimit.allowed) {
+    return rateLimit429Response(
+      otpLimit.retryAfterSec,
+      "发送验证码过于频繁，请稍后再试"
+    );
   }
 
   const admin = createAdminClient();

@@ -11,6 +11,7 @@ import {
   rejectFrozenSession,
 } from "@/lib/account-frozen";
 import { getAdminEmailSet } from "@/lib/admin-policy";
+import { getClientIp } from "@/lib/client-ip";
 import { bindReferrer, ensureAffCode } from "@/lib/referral";
 import { grantSignupTrialBonus } from "@/lib/signup-bonus";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -83,6 +84,7 @@ export async function POST(request: NextRequest) {
     await grantSignupTrialBonus(user.id, {
       userCreatedAt: user.created_at,
       role,
+      clientIp: getClientIp(request),
     });
   } catch (e) {
     console.error("[sync-profile] signup bonus:", e);

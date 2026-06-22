@@ -1,10 +1,19 @@
-import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { getClientIp, normalizeIpForBucket } from "@/lib/client-ip";
+import {
+  consumeRateLimit,
+  rateLimit429Response,
+  REGISTER_RATE_LIMITS,
+} from "@/lib/rate-limit";
 import { sendResendAuthEmail } from "@/lib/resend-auth-email";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
 
+const GENERIC_SENT_MESSAGE =
+  "若该邮箱已注册，验证码已发送，请查收邮件（含垃圾箱）";
+
 /**
- * 找回密码发验证码：Supabase Admin 生成 recovery OTP，Resend 直连发信（不依赖 Send Email Hook）。
+ * 找回密码发验证码：Supabase Admin 生成 recovery OTP，Resend 直连发信。
+ * 统一成功文案，避免泄露邮箱是否已注册。
  */
 export async function POST(request: Request) {
   let body: { email?: string };
@@ -21,6 +30,31 @@ export async function POST(request: Request) {
     return NextResponse.json({ error: "请输入有效邮箱" }, { status: 400 });
   }
 
+  const clientIp = normalizeIpForBucket(getClientIp(request));
+  const otpLimit = await consumeRateLimit({
+    bucketKey: `forgot:otp:ip:${clientIp}`,
+    max: REGISTER_RATE_LIMITS.otpPerIpPerHour,
+    windowSeconds: 3600,
+  });
+  if (!otpLimit.allowed) {
+    return rateLimit429Response(
+      otpLimit.retryAfterSec,
+      "发送验证码过于频繁，请稍后再试"
+    );
+  }
+
+  const emailLimit = await consumeRateLimit({
+    bucketKey: `forgot:otp:email:${email}`,
+    max: 5,
+    windowSeconds: 3600,
+  });
+  if (!emailLimit.allowed) {
+    return rateLimit429Response(
+      emailLimit.retryAfterSec,
+      "发送验证码过于频繁，请稍后再试"
+    );
+  }
+
   const admin = createAdminClient();
   const { data, error } = await admin.auth.admin.generateLink({
     type: "recovery",
@@ -28,20 +62,21 @@ export async function POST(request: Request) {
   });
 
   if (error) {
-    const message = getAuthErrorMessage(error);
+    const msg = (error.message ?? "").toLowerCase();
     const notFound =
-      message.toLowerCase().includes("user not found") ||
-      message.includes("未找到") ||
-      message.includes("不存在");
-    return NextResponse.json(
-      { error: notFound ? "该邮箱未注册，请检查或前往注册" : message },
-      { status: notFound ? 400 : 500 }
-    );
+      msg.includes("user not found") ||
+      msg.includes("not found") ||
+      msg.includes("不存在");
+    if (notFound) {
+      return NextResponse.json({ success: true, message: GENERIC_SENT_MESSAGE });
+    }
+    console.error("[forgot-password] generateLink:", error.message);
+    return NextResponse.json({ error: "发送失败，请稍后重试" }, { status: 500 });
   }
 
   const otp = data?.properties?.email_otp;
   if (!otp) {
-    return NextResponse.json({ error: "未能生成邮箱验证码" }, { status: 500 });
+    return NextResponse.json({ error: "发送失败，请稍后重试" }, { status: 500 });
   }
 
   let result = await sendResendAuthEmail({
@@ -71,7 +106,8 @@ export async function POST(request: Request) {
   }
 
   if (!result.ok) {
-    return NextResponse.json({ error: result.message }, { status: 500 });
+    console.error("[forgot-password] resend:", result.message);
+    return NextResponse.json({ error: "发送失败，请稍后重试" }, { status: 500 });
   }
 
   return NextResponse.json({
@@ -79,7 +115,7 @@ export async function POST(request: Request) {
     email,
     forwardedTo,
     message: forwardedTo
-      ? `验证码已转发至 ${forwardedTo}（${email} 暂无法直收 Resend 测试邮件）`
-      : `验证码已发送至 ${email}，请查收邮件（含垃圾箱）`,
+      ? `验证码已转发至 ${forwardedTo}（开发环境）`
+      : GENERIC_SENT_MESSAGE,
   });
 }

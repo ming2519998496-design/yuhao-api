@@ -1,4 +1,5 @@
 import crypto from "crypto";
+import { isUserFrozen } from "@/lib/account-frozen";
 import {
   DEFAULT_MODEL_ID,
   isModelAllowedForKey,
@@ -73,6 +74,21 @@ export async function authenticateApiKeyRequest(
       ok: false,
       response: Response.json(
         { error: { message: "API Key 已被禁用", type: "auth_error" } },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (await isUserFrozen(row.user_id)) {
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            message: "账户已被冻结，API 调用已暂停",
+            type: "auth_error",
+          },
+        },
         { status: 403 }
       ),
     };

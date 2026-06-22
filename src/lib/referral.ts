@@ -195,21 +195,26 @@ export async function completeRechargeAndRewards(
   let newBalance: number;
   try {
     const previousBalance = await getUserTotalBalance(userId);
-    const afterRecharge = await creditUserBalance(userId, amount);
+    newBalance = await creditUserBalance(userId, amount);
     await logBalanceAdjustment({
       userId,
       previousBalance,
-      newBalance: afterRecharge,
+      newBalance,
       kind: "recharge",
       rechargeRecordId: recordId,
     });
-    newBalance = await applyReferralProgramOnRecharge(userId, recordId, amount);
   } catch (e) {
     await revertRechargeToPending(admin, recordId);
     return {
       ok: false,
       error: e instanceof Error ? e.message : "余额入账失败",
     };
+  }
+
+  try {
+    newBalance = await applyReferralProgramOnRecharge(userId, recordId, amount);
+  } catch (e) {
+    console.error("[referral] rewards after recharge failed:", e);
   }
 
   return {

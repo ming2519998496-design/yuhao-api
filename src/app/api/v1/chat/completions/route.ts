@@ -28,6 +28,7 @@ import {
 } from "@/lib/upstream-gateway";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { isUserFrozen } from "@/lib/account-frozen";
+import { apiServerErrorResponse } from "@/lib/api-error";
 import { getClientIp } from "@/lib/client-ip";
 import {
   enforceApiRateLimits,
@@ -242,11 +243,8 @@ export async function POST(request: NextRequest) {
       admin
     );
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "未知错误";
-    return NextResponse.json(
-      { error: { message, type: "server_error" } },
-      { status: 500 }
-    );
+    console.error("[chat/completions]", err);
+    return apiServerErrorResponse();
   }
 }
 

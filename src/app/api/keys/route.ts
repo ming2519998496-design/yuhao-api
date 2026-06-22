@@ -15,8 +15,8 @@ import {
   normalizeKeyRow,
 } from "@/lib/api-keys-db";
 import { getUserTotalBalance } from "@/lib/user-balance";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import { createAdminClient } from "@/lib/supabase-admin";
-import { createServerSupabase } from "@/lib/supabase-server";
 
 function generateApiKey(): { raw: string; hash: string; prefix: string } {
   const raw = `yh_${crypto.randomBytes(24).toString("hex")}`;
@@ -60,15 +60,9 @@ async function listUserKeys(userId: string) {
 }
 
 export async function GET() {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   const listed = await listUserKeys(user.id);
   if ("error" in listed && listed.error) {
@@ -95,15 +89,9 @@ export async function GET() {
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createServerSupabase();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
-
-    if (authError || !user) {
-      return NextResponse.json({ error: "未登录" }, { status: 401 });
-    }
+    const auth = await requireActiveUserResponse();
+    if (auth.response) return auth.response;
+    const user = auth.user;
 
     const body = await request.json().catch(() => ({}));
     const name = body.name || "默认密钥";
@@ -176,15 +164,9 @@ export async function POST(request: NextRequest) {
 }
 
 export async function PATCH(request: NextRequest) {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   const body = await request.json().catch(() => ({}));
   const keyId = typeof body.id === "string" ? body.id : "";
@@ -279,29 +261,28 @@ export async function PATCH(request: NextRequest) {
     return NextResponse.json({ error: "没有可更新的字段" }, { status: 400 });
   }
 
-  const { error } = await admin
+  const { data: updated, error } = await admin
     .from("api_keys")
     .update(updates)
     .eq("id", keyId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!updated?.length) {
+    return NextResponse.json({ error: "密钥不存在" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });
 }
 
 export async function DELETE(request: NextRequest) {
-  const supabase = await createServerSupabase();
-  const {
-    data: { user },
-    error: authError,
-  } = await supabase.auth.getUser();
-
-  if (authError || !user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   const { searchParams } = new URL(request.url);
   const keyId = searchParams.get("id");
@@ -311,14 +292,19 @@ export async function DELETE(request: NextRequest) {
   }
 
   const admin = createAdminClient();
-  const { error } = await admin
+  const { data: deleted, error } = await admin
     .from("api_keys")
     .delete()
     .eq("id", keyId)
-    .eq("user_id", user.id);
+    .eq("user_id", user.id)
+    .select("id");
 
   if (error) {
     return NextResponse.json({ error: error.message }, { status: 500 });
+  }
+
+  if (!deleted?.length) {
+    return NextResponse.json({ error: "密钥不存在" }, { status: 404 });
   }
 
   return NextResponse.json({ success: true });

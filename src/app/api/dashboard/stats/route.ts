@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth-admin";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { getUserTotalBalance } from "@/lib/user-balance";
 import { NextResponse } from "next/server";
@@ -7,10 +7,9 @@ const DAY_LABELS = ["周日", "周一", "周二", "周三", "周四", "周五", 
 
 /** 当前登录用户的数据看板统计 */
 export async function GET() {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   const admin = createAdminClient();
   const userId = user.id;

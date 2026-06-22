@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth-admin";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import {
   createPendingRechargeRecord,
   listUserRechargeRecords,
@@ -9,10 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** 当前用户的充值记录列表 */
 export async function GET() {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   const admin = createAdminClient();
   const { records, error } = await listUserRechargeRecords(admin, user.id);
@@ -32,10 +31,9 @@ export async function GET() {
 
 /** 用户提交充值：须上传转账凭证，金额由管理员核对凭证后填写 */
 export async function POST(request: NextRequest) {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   let formData: FormData;
   try {

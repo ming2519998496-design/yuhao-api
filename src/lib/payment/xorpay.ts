@@ -35,6 +35,17 @@ function buildCreateSign(params: {
   );
 }
 
+function timingSafeEqualHex(a: string, b: string): boolean {
+  try {
+    const ba = Buffer.from(a, "utf8");
+    const bb = Buffer.from(b, "utf8");
+    if (ba.length !== bb.length) return false;
+    return crypto.timingSafeEqual(ba, bb);
+  } catch {
+    return false;
+  }
+}
+
 function buildNotifySign(params: {
   aoid: string;
   orderId: string;
@@ -135,7 +146,7 @@ export function createXorPayProvider(aid: string, secret: string): OnlinePayment
         secret: appSecret,
       });
 
-      if (expected !== sign) {
+      if (!timingSafeEqualHex(expected, sign)) {
         return { ok: false, error: "回调签名校验失败" };
       }
 

@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth-admin";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import { sendResendAuthEmail } from "@/lib/resend-auth-email";
 import { createAdminClient } from "@/lib/supabase-admin";
 import { NextResponse } from "next/server";
@@ -8,9 +8,12 @@ import { NextResponse } from "next/server";
  * Resend 未验证域名时，可配置 RESEND_DEV_OTP_FORWARD_TO 将验证码转发到 Gmail。
  */
 export async function POST() {
-  const user = await getSessionUser();
-  if (!user?.email) {
-    return NextResponse.json({ error: "未登录或未绑定邮箱" }, { status: 401 });
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
+
+  if (!user.email) {
+    return NextResponse.json({ error: "未绑定邮箱" }, { status: 400 });
   }
 
   const email = user.email;

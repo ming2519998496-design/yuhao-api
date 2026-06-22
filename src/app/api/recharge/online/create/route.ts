@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth-admin";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import { getPublicSiteOrigin } from "@/lib/payment/config";
 import { getOnlinePaymentProvider } from "@/lib/payment/provider";
 import type { OnlinePayMethod } from "@/lib/payment/types";
@@ -21,10 +21,9 @@ const MAX_AMOUNT = 100_000;
 
 /** 创建在线支付订单（XorPay 个人版起步，换主体仅改 env） */
 export async function POST(request: NextRequest) {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   let body: { amount?: unknown; method?: unknown };
   try {

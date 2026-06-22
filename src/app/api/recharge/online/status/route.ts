@@ -1,4 +1,4 @@
-import { getSessionUser } from "@/lib/auth-admin";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import {
   getRechargeRecordByOrderNo,
   markRechargeExpired,
@@ -9,10 +9,9 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** 查询在线订单状态（前端轮询） */
 export async function GET(request: NextRequest) {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
+  const user = auth.user;
 
   const orderNo = request.nextUrl.searchParams.get("orderNo")?.trim();
   if (!orderNo) {

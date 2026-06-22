@@ -1,5 +1,6 @@
 import { authenticateApiKeyRequest } from "@/lib/api-key-auth";
 import { executeWithFixedBilling } from "@/lib/billing-reserve";
+import { apiServerErrorResponse } from "@/lib/api-error";
 import { getClientIp } from "@/lib/client-ip";
 import { runGoogleGeneration } from "@/lib/google-generations";
 import {
@@ -186,10 +187,7 @@ export async function POST(request: NextRequest) {
 
     return NextResponse.json(result.data, { status: result.status, headers });
   } catch (err: unknown) {
-    const message = err instanceof Error ? err.message : "未知错误";
-    return NextResponse.json(
-      { error: { message, type: "server_error" } },
-      { status: 500 }
-    );
+    console.error("[generations]", err);
+    return apiServerErrorResponse();
   }
 }

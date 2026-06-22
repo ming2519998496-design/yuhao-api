@@ -1,13 +1,11 @@
-import { getSessionUser } from "@/lib/auth-admin";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import { loadAnnouncements } from "@/lib/announcements-store";
 import { NextResponse } from "next/server";
 
 /** 登录用户读取公告列表 */
 export async function GET() {
-  const user = await getSessionUser();
-  if (!user) {
-    return NextResponse.json({ error: "未登录" }, { status: 401 });
-  }
+  const auth = await requireActiveUserResponse();
+  if (auth.response) return auth.response;
 
   try {
     const { items, updatedAt } = await loadAnnouncements();

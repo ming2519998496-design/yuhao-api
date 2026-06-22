@@ -48,19 +48,37 @@ async function creditProfileBalance(
   amount: number
 ): Promise<void> {
   const admin = createAdminClient();
+  const { data, error } = await admin.rpc("credit_balance", {
+    p_user_id: userId,
+    p_amount: amount,
+  });
+
+  if (!error && data != null) {
+    return;
+  }
+
+  if (
+    error &&
+    !error.message.includes("credit_balance") &&
+    !error.message.includes("does not exist") &&
+    !error.message.includes("schema cache")
+  ) {
+    throw new Error(error.message);
+  }
+
   const current = await getUserTotalBalance(userId);
   const newBalance = Number((current + amount).toFixed(2));
-  const { error } = await admin
+  const { error: updateErr } = await admin
     .from("profiles")
     .update({ balance: newBalance })
     .eq("id", userId);
 
-  if (error) {
-    if (isMissingProfileBalanceColumn(error.message)) {
+  if (updateErr) {
+    if (isMissingProfileBalanceColumn(updateErr.message)) {
       await creditLegacyKeyBalance(userId, amount);
       return;
     }
-    throw new Error(error.message);
+    throw new Error(updateErr.message);
   }
 }
 

@@ -15,6 +15,21 @@ function applyBaseSecurityHeaders(response: NextResponse) {
   }
 }
 
+function applyPrivatePageCacheHeaders(response: NextResponse) {
+  response.headers.set(
+    "Cache-Control",
+    "private, no-store, no-cache, must-revalidate"
+  );
+  response.headers.set("Pragma", "no-cache");
+}
+
+function isPrivatePage(pathname: string): boolean {
+  const prefixes = ["/dashboard", "/recharge", "/console", "/admin"];
+  return prefixes.some(
+    (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
+  );
+}
+
 function applyPageSecurityHeaders(
   request: NextRequest,
   response: NextResponse
@@ -92,6 +107,9 @@ export function middleware(request: NextRequest) {
 
   const response = NextResponse.next();
   applyPageSecurityHeaders(request, response);
+  if (isPrivatePage(pathname)) {
+    applyPrivatePageCacheHeaders(response);
+  }
   return response;
 }
 

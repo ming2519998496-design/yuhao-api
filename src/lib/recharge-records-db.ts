@@ -274,12 +274,60 @@ export async function markRechargeExpired(
     .maybeSingle();
 }
 
+/** 批量将用户已过期的在线 pending 订单标记为 expired */
+export async function expireStaleOnlinePendingForUser(
+  admin: SupabaseClient,
+  userId: string
+): Promise<void> {
+  const now = new Date().toISOString();
+  await admin
+    .from("recharge_records")
+    .update({ status: "expired" })
+    .eq("user_id", userId)
+    .eq("status", "pending")
+    .eq("source", "online")
+    .lt("expired_at", now);
+}
+
+/** 记录过期订单的迟付回调（供管理员人工核对，不自动入账） */
+export async function recordLatePaymentOnExpiredOrder(
+  admin: SupabaseClient,
+  recordId: number,
+  params: {
+    externalTradeId?: string;
+    paidAmount: number;
+    notifyPayload: Record<string, unknown>;
+    existingPayMeta?: Record<string, unknown>;
+  }
+) {
+  const payMeta = {
+    ...(params.existingPayMeta ?? {}),
+    late_payment: true,
+    late_payment_at: new Date().toISOString(),
+    late_payment_notify: params.notifyPayload,
+  };
+  const payload: Record<string, unknown> = {
+    paid_amount: params.paidAmount,
+    pay_meta: payMeta,
+  };
+  if (params.externalTradeId) {
+    payload.external_trade_id = params.externalTradeId;
+  }
+  return admin
+    .from("recharge_records")
+    .update(payload)
+    .eq("id", recordId)
+    .eq("status", "expired");
+}
+
 /** 查询充值记录（兼容未迁移 order_no / completed_at 字段） */
 export async function listUserRechargeRecords(
   admin: SupabaseClient,
   userId: string,
   limit = 50
 ) {
+  await expireStaleOnlinePendingForUser(admin, userId);
+
   const full = await admin
     .from("recharge_records")
     .select(RECHARGE_SELECT_USER_FULL)

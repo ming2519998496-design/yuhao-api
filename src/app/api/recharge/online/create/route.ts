@@ -12,6 +12,7 @@ import {
 import {
   attachOnlinePaymentSession,
   createOnlinePendingRechargeRecord,
+  expireStaleOnlinePendingForUser,
   markRechargeExpired,
 } from "@/lib/recharge-records-db";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -59,6 +60,8 @@ export async function POST(request: NextRequest) {
   }
 
   const admin = createAdminClient();
+
+  await expireStaleOnlinePendingForUser(admin, user.id);
 
   const { count: pendingCount } = await admin
     .from("recharge_records")

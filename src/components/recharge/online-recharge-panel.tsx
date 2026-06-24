@@ -8,6 +8,7 @@ import {
   ONLINE_RECHARGE_FEE_PERCENT_LABEL,
   ONLINE_RECHARGE_MIN_PAY_YUAN,
 } from "@/lib/recharge-fees";
+import { isOnlineOrderPastExpiry } from "@/lib/recharge-records";
 import { cn } from "@/lib/utils";
 import { Clock, Loader2, Smartphone, X, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useRef, useState } from "react";
@@ -137,7 +138,12 @@ export function OnlineRechargePanel({
     if (
       pendingOnlineOrder?.orderNo &&
       pendingOnlineOrder.payRedirectUrl &&
-      !orderNo
+      !orderNo &&
+      !isOnlineOrderPastExpiry({
+        status: "pending",
+        source: "online",
+        expiredAt: pendingOnlineOrder.expiredAt,
+      })
     ) {
       setOrderNo(pendingOnlineOrder.orderNo);
       setPayUrl(pendingOnlineOrder.payRedirectUrl);

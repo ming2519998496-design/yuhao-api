@@ -10,6 +10,7 @@ import {
   MANUAL_RECHARGE_MIN_PAY_YUAN,
   RECHARGE_MIN_YUAN,
 } from "@/lib/recharge-fees";
+import { isOnlineOrderPastExpiry } from "@/lib/recharge-records";
 import { cn } from "@/lib/utils";
 import {
   getPaymentMethodLabel,
@@ -136,7 +137,7 @@ export default function RechargePage() {
     (r) => r.source !== "online"
   );
   const pendingOnlineRecord = pendingRecords.find(
-    (r) => r.source === "online"
+    (r) => r.source === "online" && !isOnlineOrderPastExpiry(r)
   );
 
   useEffect(() => {

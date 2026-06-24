@@ -98,6 +98,20 @@ export function orderNoFromId(id: number): string {
   return `RC${String(id).padStart(12, "0")}`;
 }
 
+/** 在线 pending 订单是否已超过 expired_at */
+export function isOnlineOrderPastExpiry(record: {
+  status: string;
+  source?: string;
+  expiredAt?: string | null;
+}): boolean {
+  return (
+    record.status === "pending" &&
+    record.source === "online" &&
+    !!record.expiredAt &&
+    new Date(record.expiredAt).getTime() < Date.now()
+  );
+}
+
 export function mapRechargeRecord(r: {
   id: number;
   order_no?: string | null;

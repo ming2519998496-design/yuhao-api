@@ -7,19 +7,26 @@ type Props = {
   text: string;
   /** 每个字符间隔（毫秒） */
   speed?: number;
-  /** 开始打字前的延迟（毫秒） */
+  /** 首次开始打字前的延迟（毫秒） */
   startDelay?: number;
+  /** 打完全部文字后停留多久再循环（毫秒） */
+  pauseMs?: number;
+  /** 是否循环播放 */
+  loop?: boolean;
   className?: string;
 };
 
 export function TypewriterText({
   text,
-  speed = 36,
+  speed = 50,
   startDelay = 600,
+  pauseMs = 5000,
+  loop = true,
   className,
 }: Props) {
   const [length, setLength] = useState(0);
   const [done, setDone] = useState(false);
+  const [cycle, setCycle] = useState(0);
 
   useEffect(() => {
     setLength(0);
@@ -27,6 +34,9 @@ export function TypewriterText({
 
     let index = 0;
     let interval: ReturnType<typeof setInterval> | undefined;
+    let pauseTimer: ReturnType<typeof setTimeout> | undefined;
+    const delay = cycle === 0 ? startDelay : 0;
+
     const startTimer = setTimeout(() => {
       interval = setInterval(() => {
         index += 1;
@@ -34,17 +44,24 @@ export function TypewriterText({
           setLength(text.length);
           setDone(true);
           if (interval) clearInterval(interval);
+
+          if (loop) {
+            pauseTimer = setTimeout(() => {
+              setCycle((c) => c + 1);
+            }, pauseMs);
+          }
           return;
         }
         setLength(index);
       }, speed);
-    }, startDelay);
+    }, delay);
 
     return () => {
       clearTimeout(startTimer);
       if (interval) clearInterval(interval);
+      if (pauseTimer) clearTimeout(pauseTimer);
     };
-  }, [text, speed, startDelay]);
+  }, [text, speed, startDelay, pauseMs, loop, cycle]);
 
   return (
     <span className={className}>

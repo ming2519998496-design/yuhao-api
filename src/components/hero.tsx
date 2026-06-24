@@ -62,7 +62,12 @@ export function Hero() {
             好用的 AI 模型服务商 · 国内稳定直连
           </p>
           <p className="min-h-[4.5rem] max-w-2xl text-sm leading-relaxed text-muted sm:min-h-[3.25rem]">
-            <TypewriterText text={HERO_SUBTITLE} startDelay={700} speed={32} />
+            <TypewriterText
+              text={HERO_SUBTITLE}
+              startDelay={700}
+              speed={52}
+              pauseMs={5000}
+            />
           </p>
         </motion.div>
 

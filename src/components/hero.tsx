@@ -2,6 +2,10 @@
 
 import { motion } from "framer-motion";
 import Link from "next/link";
+import { TypewriterText } from "@/components/typewriter-text";
+
+const HERO_SUBTITLE =
+  "面向开发者的一站式 AI 模型 API 接入服务，支持 OpenAI 兼容调用与 Gemini 模型，适合国内开发者、独立产品和中小团队快速接入。";
 
 const models = [
   { name: "GPT", label: "OpenAI" },
@@ -48,14 +52,19 @@ export function Hero() {
           ))}
         </motion.div>
 
-        <motion.p
+        <motion.div
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
           transition={{ duration: 0.5, delay: 0.22 }}
-          className="mt-8 max-w-md text-sm leading-relaxed text-muted"
+          className="mt-8 flex flex-col items-center gap-3 px-2"
         >
-          好用的 AI 模型服务商 · 国内稳定直连
-        </motion.p>
+          <p className="max-w-md text-sm leading-relaxed text-muted">
+            好用的 AI 模型服务商 · 国内稳定直连
+          </p>
+          <p className="min-h-[4.5rem] max-w-2xl text-sm leading-relaxed text-muted sm:min-h-[3.25rem]">
+            <TypewriterText text={HERO_SUBTITLE} startDelay={700} speed={32} />
+          </p>
+        </motion.div>
 
         <motion.div
           initial={{ opacity: 0, y: 12 }}

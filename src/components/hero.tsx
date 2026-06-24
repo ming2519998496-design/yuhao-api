@@ -5,7 +5,7 @@ import Link from "next/link";
 import { TypewriterText } from "@/components/typewriter-text";
 
 const HERO_SUBTITLE =
-  "面向开发者的一站式 AI 模型 API 接入服务，支持 OpenAI 兼容调用与 Gemini 模型，适合国内开发者、独立产品和中小团队快速接入。";
+  "一站式 AI 模型 API 接入服务，支持 OpenAI 兼容调用与 Gemini 模型，适合国内开发者、独立产品和中小团队快速接入。";
 
 const models = [
   { name: "GPT", label: "OpenAI" },

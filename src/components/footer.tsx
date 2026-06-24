@@ -8,6 +8,9 @@ export function Footer() {
           © {new Date().getFullYear()} 遇好API · 好用的 AI 模型服务商
         </p>
         <div className="flex gap-4 text-sm text-muted">
+          <Link href="/docs/quickstart" className="hover:text-foreground">
+            快速开始
+          </Link>
           <Link href="/support" className="hover:text-foreground">
             联系客服
           </Link>

@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  Code2,
   CreditCard,
   LayoutDashboard,
   LogOut,
@@ -25,6 +26,7 @@ import type { User } from "@supabase/supabase-js";
 const navItems = [
   { href: "/dashboard", label: "数据看板", icon: LayoutDashboard },
   { href: "/console", label: "令牌管理", icon: Terminal },
+  { href: "/playground", label: "API 调试", icon: Code2 },
   { href: "/pricing", label: "价格说明", icon: Tags },
   { href: "/recharge", label: "我的钱包", icon: CreditCard },
   { href: "/dashboard/referral", label: "邀请奖励", icon: Gift },

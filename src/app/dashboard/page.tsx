@@ -1,6 +1,7 @@
 "use client";
 
 import { DashboardShell } from "@/components/dashboard/dashboard-shell";
+import { OnboardingGuide } from "@/components/dashboard/onboarding-guide";
 import { StatCard } from "@/components/dashboard/stat-card";
 import {
   Activity,
@@ -47,13 +48,17 @@ function formatTokens(n: number): string {
 
 export default function DashboardPage() {
   const [stats, setStats] = useState<DashboardStats | null>(null);
+  const [hasKeys, setHasKeys] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    fetch("/api/dashboard/stats")
-      .then((r) => r.json())
-      .then((data) => {
-        if (data.todayRequests !== undefined) setStats(data);
+    Promise.all([
+      fetch("/api/dashboard/stats").then((r) => r.json()),
+      fetch("/api/keys").then((r) => (r.ok ? r.json() : { keys: [] })),
+    ])
+      .then(([statsData, keysData]) => {
+        if (statsData.todayRequests !== undefined) setStats(statsData);
+        setHasKeys(Array.isArray(keysData.keys) && keysData.keys.length > 0);
       })
       .finally(() => setLoading(false));
   }, []);
@@ -62,6 +67,10 @@ export default function DashboardPage() {
   const maxTokens = Math.max(1, ...trend.map((d) => d.tokens));
   const modelUsage = stats?.modelUsage ?? [];
   const recentRequests = stats?.recentRequests ?? [];
+  const hasApiCalls =
+    (stats?.todayRequests ?? 0) > 0 ||
+    (stats?.totalUsage ?? 0) > 0 ||
+    recentRequests.length > 0;
 
   return (
     <DashboardShell
@@ -72,6 +81,12 @@ export default function DashboardPage() {
         <p className="text-sm text-muted">加载中...</p>
       ) : (
         <div className="space-y-6">
+          <OnboardingGuide
+            hasKeys={hasKeys}
+            hasApiCalls={hasApiCalls}
+            balance={stats?.balance}
+          />
+
           <div className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3 2xl:grid-cols-6">
             <StatCard
               title="账户余额"

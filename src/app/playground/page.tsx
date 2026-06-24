@@ -1,5 +1,6 @@
 "use client";
 
+import { ApiIntegrationSnippets } from "@/components/api/api-integration-snippets";
 import { getStoredModelId, setStoredModelId } from "@/components/models/model-catalog";
 import {
   getPlaygroundApiKey,
@@ -26,6 +27,7 @@ function PlaygroundContent() {
   const [loggedIn, setLoggedIn] = useState(false);
   const [billingNote, setBillingNote] = useState("");
   const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [callSucceeded, setCallSucceeded] = useState(false);
 
   useEffect(() => {
     const fromQuery = searchParams.get("model");
@@ -102,6 +104,7 @@ function PlaygroundContent() {
     setResponse("");
     setBillingNote("");
     setImagePreview(null);
+    setCallSucceeded(false);
 
     const isGeneration = modelApiKind !== "chat";
 
@@ -128,6 +131,10 @@ function PlaygroundContent() {
 
       const data = await res.json();
       setResponse(JSON.stringify(data, null, 2));
+
+      if (res.ok && !data?.error) {
+        setCallSucceeded(true);
+      }
 
       const firstImage = data?.data?.[0];
       if (firstImage?.b64_json) {
@@ -243,6 +250,16 @@ function PlaygroundContent() {
             <p className="mt-3 rounded-lg border border-accent/30 bg-accent/5 px-4 py-2 text-sm text-accent-dark">
               {billingNote}
             </p>
+          )}
+
+          {callSucceeded && apiKey.trim() && modelApiKind === "chat" && (
+            <ApiIntegrationSnippets
+              apiKey={apiKey.trim()}
+              model={model}
+              prompt={prompt}
+              className="mt-4"
+              title="调用成功 · 复制接入配置"
+            />
           )}
 
           {imagePreview && (

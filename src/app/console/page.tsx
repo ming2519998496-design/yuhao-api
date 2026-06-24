@@ -13,6 +13,7 @@ import {
   formatCategoryLabels,
   resolveAllowedCategoryIds,
 } from "@/lib/api-key-models";
+import { getApiBaseUrl } from "@/lib/api-client-config";
 import { cn } from "@/lib/utils";
 import {
   ChevronDown,
@@ -25,7 +26,8 @@ import {
   Trash2,
 } from "lucide-react";
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useSearchParams } from "next/navigation";
+import { Suspense, useEffect, useMemo, useRef, useState } from "react";
 
 interface ApiKeyItem {
   id: string;
@@ -58,6 +60,21 @@ const emptyForm: TokenFormValues = {
 };
 
 export default function ConsolePage() {
+  return (
+    <Suspense
+      fallback={
+        <DashboardShell title="令牌管理" description="管理 API 密钥、模型权限与余额">
+          <p className="text-sm text-muted">加载中...</p>
+        </DashboardShell>
+      }
+    >
+      <ConsolePageContent />
+    </Suspense>
+  );
+}
+
+function ConsolePageContent() {
+  const searchParams = useSearchParams();
   const [keys, setKeys] = useState<ApiKeyItem[]>([]);
   const [groups, setGroups] = useState<CatalogGroup[]>([]);
   const [loading, setLoading] = useState(true);
@@ -123,13 +140,16 @@ export default function ConsolePage() {
     });
   }, [keys, search]);
 
-  const apiBaseUrl = useMemo(() => {
-    const site = process.env.NEXT_PUBLIC_SITE_URL?.trim();
-    const origin = site
-      ? (site.startsWith("http") ? site : `https://${site}`).replace(/\/$/, "")
-      : "https://yuhaoapi.com";
-    return `${origin}/v1`;
-  }, []);
+  const apiBaseUrl = useMemo(() => getApiBaseUrl(), []);
+  const createPrompted = useRef(false);
+
+  useEffect(() => {
+    if (createPrompted.current || loading) return;
+    if (searchParams.get("create") === "1") {
+      createPrompted.current = true;
+      openCreate();
+    }
+  }, [searchParams, loading]);
 
   function openCreate() {
     setDialogMode("create");

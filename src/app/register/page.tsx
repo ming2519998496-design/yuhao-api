@@ -39,7 +39,7 @@ export default function RegisterPage() {
   async function finishRegistration() {
     await syncProfileClient(getStoredAffCode());
     clearStoredAffCode();
-    router.push("/dashboard");
+    router.push("/dashboard?welcome=1");
     router.refresh();
   }
 

@@ -58,7 +58,7 @@ export function Hero() {
           transition={{ duration: 0.5, delay: 0.22 }}
           className="mt-8 flex flex-col items-center gap-3 px-2"
         >
-          <p className="max-w-md text-sm leading-relaxed text-muted">
+          <p className="max-w-md text-[calc(0.875rem+10pt)] font-bold leading-relaxed text-muted">
             好用的 AI 模型服务商 · 国内稳定直连
           </p>
           <p className="min-h-[4.5rem] max-w-2xl text-sm leading-relaxed text-muted sm:min-h-[3.25rem]">

@@ -12,6 +12,93 @@ async function sleep(ms: number) {
   await new Promise((r) => setTimeout(r, ms));
 }
 
+async function fetchGoogleMediaAsBase64(
+  uri: string,
+  apiKey: string
+): Promise<string | null> {
+  const useHeaderKey =
+    uri.includes("generativelanguage.googleapis.com") && !uri.includes("key=");
+  const url = useHeaderKey
+    ? uri
+    : uri.includes("key=")
+      ? uri
+      : `${uri}${uri.includes("?") ? "&" : "?"}key=${encodeURIComponent(apiKey)}`;
+
+  try {
+    const response = await upstreamFetch(url, {
+      headers: useHeaderKey ? { "x-goog-api-key": apiKey } : undefined,
+    });
+    if (!response.ok) return null;
+    const buffer = Buffer.from(await response.arrayBuffer());
+    if (buffer.length === 0) return null;
+    return buffer.toString("base64");
+  } catch {
+    return null;
+  }
+}
+
+type VeoVideoPayload = {
+  uri?: string;
+  bytesBase64Encoded?: string;
+  mimeType?: string;
+};
+
+function collectVeoVideoEntry(
+  video: VeoVideoPayload | null | undefined,
+  bucket: Array<{ uri?: string; b64_json?: string; mime_type?: string }>
+) {
+  if (!video) return;
+  const mimeType = video.mimeType ?? "video/mp4";
+  if (video.bytesBase64Encoded) {
+    bucket.push({ b64_json: video.bytesBase64Encoded, mime_type: mimeType });
+    return;
+  }
+  if (video.uri) {
+    bucket.push({ uri: video.uri, mime_type: mimeType });
+  }
+}
+
+function extractVeoVideosFromResponse(response: Record<string, unknown>): Array<{
+  uri?: string;
+  b64_json?: string;
+  mime_type?: string;
+}> {
+  const videos: Array<{ uri?: string; b64_json?: string; mime_type?: string }> =
+    [];
+
+  const generateVideoResponse = response.generateVideoResponse as
+    | Record<string, unknown>
+    | undefined;
+  const generatedSamples = generateVideoResponse?.generatedSamples;
+  if (Array.isArray(generatedSamples)) {
+    for (const sample of generatedSamples) {
+      if (!sample || typeof sample !== "object") continue;
+      const row = sample as { video?: VeoVideoPayload };
+      collectVeoVideoEntry(row.video, videos);
+    }
+  }
+
+  const legacy = response.generatedVideos ?? response.videos ?? [];
+  if (Array.isArray(legacy)) {
+    for (const item of legacy) {
+      if (!item || typeof item !== "object") continue;
+      const row = item as { video?: VeoVideoPayload } & VeoVideoPayload;
+      collectVeoVideoEntry(row.video ?? row, videos);
+    }
+  }
+
+  return videos;
+}
+
+function veoFilteredReason(response: Record<string, unknown>): string | null {
+  const generateVideoResponse = response.generateVideoResponse as
+    | Record<string, unknown>
+    | undefined;
+  const reasons = generateVideoResponse?.raiMediaFilteredReasons;
+  if (!Array.isArray(reasons) || reasons.length === 0) return null;
+  return reasons.filter((r) => typeof r === "string").join("；");
+}
+
 export async function runGoogleGeneration(
   modelConfig: ModelConfig,
   apiKey: string,
@@ -167,17 +254,35 @@ async function runVeo(
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
       instances: [{ prompt }],
+      parameters: {
+        aspectRatio: "16:9",
+      },
     }),
   });
 
-  const startData = await startRes.json();
+  let startData: Record<string, unknown> = {};
+  try {
+    startData = (await startRes.json()) as Record<string, unknown>;
+  } catch {
+    return {
+      ok: false,
+      status: 502,
+      data: {
+        error: {
+          message: "Veo 返回异常响应",
+          type: "upstream_error",
+        },
+      },
+    };
+  }
   if (!startRes.ok) {
+    const err = startData.error as { message?: string } | undefined;
     return {
       ok: false,
       status: startRes.status,
       data: {
         error: {
-          message: startData.error?.message || "Veo 任务创建失败",
+          message: err?.message || "Veo 任务创建失败",
           type: "upstream_error",
         },
       },
@@ -204,16 +309,33 @@ async function runVeo(
   while (Date.now() < deadline) {
     await sleep(VEO_POLL_MS);
     const pollUrl = `${pollBase}/${operationName}?key=${apiKey}`;
-    const pollRes = await upstreamFetch(pollUrl);
-    const pollData = await pollRes.json();
+    const pollRes = await upstreamFetch(pollUrl, {
+      headers: { "x-goog-api-key": apiKey },
+    });
+    let pollData: Record<string, unknown> = {};
+    try {
+      pollData = (await pollRes.json()) as Record<string, unknown>;
+    } catch {
+      return {
+        ok: false,
+        status: 502,
+        data: {
+          error: {
+            message: "Veo 轮询返回异常响应",
+            type: "upstream_error",
+          },
+        },
+      };
+    }
 
     if (!pollRes.ok) {
+      const err = pollData.error as { message?: string } | undefined;
       return {
         ok: false,
         status: pollRes.status,
         data: {
           error: {
-            message: pollData.error?.message || "Veo 轮询失败",
+            message: err?.message || "Veo 轮询失败",
             type: "upstream_error",
           },
         },
@@ -222,32 +344,51 @@ async function runVeo(
 
     if (pollData.done) {
       if (pollData.error) {
+        const err = pollData.error as { message?: string };
         return {
           ok: false,
           status: 502,
           data: {
             error: {
-              message: pollData.error.message || "Veo 生成失败",
+              message: err.message || "Veo 生成失败",
               type: "upstream_error",
             },
           },
         };
       }
 
+      const response = pollData.response ?? {};
+      const rawVideos = extractVeoVideosFromResponse(
+        response as Record<string, unknown>
+      );
       const videos: Array<{ uri?: string; b64_json?: string; mime_type?: string }> =
         [];
-      const response = pollData.response ?? {};
-      const generated = response.generatedVideos ?? response.videos ?? [];
 
-      for (const item of generated) {
-        const video = item.video ?? item;
-        if (video.uri) videos.push({ uri: video.uri, mime_type: video.mimeType });
-        if (video.bytesBase64Encoded) {
-          videos.push({
-            b64_json: video.bytesBase64Encoded,
-            mime_type: video.mimeType ?? "video/mp4",
-          });
+      for (const item of rawVideos) {
+        const mimeType = item.mime_type ?? "video/mp4";
+        if (item.b64_json) {
+          videos.push({ b64_json: item.b64_json, mime_type: mimeType });
+          continue;
         }
+        if (item.uri) {
+          videos.push({ uri: item.uri, mime_type: mimeType });
+        }
+      }
+
+      if (videos.length === 0) {
+        const filtered = veoFilteredReason(response as Record<string, unknown>);
+        return {
+          ok: false,
+          status: 502,
+          data: {
+            error: {
+              message:
+                filtered ??
+                "Veo 任务已完成，但未返回可下载的视频（可能被内容安全策略拦截）",
+              type: "upstream_error",
+            },
+          },
+        };
       }
 
       return {

@@ -87,6 +87,14 @@ const checks = [
     name: "balance_adjustment_logs",
     run: () => admin.from("balance_adjustment_logs").select("id").limit(1),
   },
+  {
+    name: "chat_sessions",
+    run: () => admin.from("chat_sessions").select("id").limit(1),
+  },
+  {
+    name: "chat_messages",
+    run: () => admin.from("chat_messages").select("id").limit(1),
+  },
 ];
 
 let failed = 0;

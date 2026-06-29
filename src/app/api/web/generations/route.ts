@@ -1,4 +1,4 @@
-import { authenticateApiKeyRequest } from "@/lib/api-key-auth";
+import { authenticateUserKeyById } from "@/lib/api-key-auth";
 import { runGenerationRequest } from "@/lib/generations-handler";
 import { apiServerErrorResponse } from "@/lib/api-error";
 import { getClientIp } from "@/lib/client-ip";
@@ -6,13 +6,15 @@ import {
   enforceApiRateLimits,
   rateLimit429Response,
 } from "@/lib/rate-limit";
-import crypto from "crypto";
+import { requireActiveUserResponse } from "@/lib/session-api";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
+export const maxDuration = 120;
 
-type GenerationRequestBody = {
+type WebGenerationBody = {
+  keyId?: string;
   model?: string;
   prompt?: string;
   size?: string;
@@ -21,14 +23,25 @@ type GenerationRequestBody = {
 
 export async function POST(request: NextRequest) {
   try {
-    let body: GenerationRequestBody;
+    const session = await requireActiveUserResponse();
+    if (session.response) return session.response;
+
+    let body: WebGenerationBody;
     try {
       body = await request.json();
     } catch {
       return NextResponse.json({ error: { message: "无效请求体" } }, { status: 400 });
     }
 
+    const keyId = typeof body.keyId === "string" ? body.keyId.trim() : "";
     const modelId = typeof body.model === "string" ? body.model.trim() : "";
+
+    if (!keyId) {
+      return NextResponse.json(
+        { error: { message: "请选择 API Key", type: "auth_error" } },
+        { status: 400 }
+      );
+    }
     if (!modelId) {
       return NextResponse.json(
         { error: { message: "请指定 model", type: "invalid_request_error" } },
@@ -36,38 +49,24 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    const auth = await authenticateApiKeyRequest(
-      request.headers.get("authorization"),
-      modelId,
-      null
-    );
+    const auth = await authenticateUserKeyById(session.user.id, keyId, modelId);
     if (!auth.ok) return auth.response;
 
-    const { apiKey, modelConfig } = auth;
-
-    const authHeader = request.headers.get("authorization");
-    const rawKey = authHeader?.startsWith("Bearer ")
-      ? authHeader.slice(7).trim()
-      : "";
-    const keyHash = rawKey
-      ? crypto.createHash("sha256").update(rawKey).digest("hex")
-      : apiKey.id;
-
     const rateLimit = await enforceApiRateLimits({
-      keyHash,
-      userId: apiKey.user_id,
+      keyHash: `web:${keyId}`,
+      userId: session.user.id,
       clientIp: getClientIp(request),
     });
     if (!rateLimit.allowed) {
       return rateLimit429Response(
         rateLimit.retryAfterSec,
-        "API 调用过于频繁，请稍后再试"
+        "调用过于频繁，请稍后再试"
       );
     }
 
-    return runGenerationRequest(apiKey, modelConfig, body);
+    return runGenerationRequest(auth.apiKey, auth.modelConfig, body);
   } catch (err: unknown) {
-    console.error("[generations]", err);
+    console.error("[web/generations]", err);
     return apiServerErrorResponse();
   }
 }

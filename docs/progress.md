@@ -1,7 +1,7 @@
 # 遇好API — 项目进度表
 
 > **用法**：每天开工看「今日进度表」；收工前更新状态（点击 `- [ ]` 可勾选）。  
-> 相关文档：[launch-checklist.md](./launch-checklist.md) · [local-dev-upstream.md](./local-dev-upstream.md)
+> 相关文档：[launch-checklist.md](./launch-checklist.md) · [local-dev-upstream.md](./local-dev-upstream.md) · [ai-chat-roadmap.md](./ai-chat-roadmap.md)
 
 **状态图例**：`☐` 未开始 · `🟡` 进行中 · `✅` 完成 · `🔴` 阻塞 / 跳过
 
@@ -11,24 +11,25 @@
 
 <!-- 每天把本节日期改成当天；新的一天复制「每日记录模板」到文末历史区 -->
 
-**日期：2026-05-19**
+**日期：2026-06-27**
 
 | # | 任务 | 状态 | 备注 |
 |---|------|------|------|
-| 1 | 账户共享余额（SQL + 代码） | ✅ | 已完成 |
-| 2 | 本地 OpenAI / Google / DeepSeek 测试 | ✅ | HTTPS_PROXY + curl 通过 |
-| 3 | 上游 Key 保存后立即生效 | ✅ | 去掉内存缓存 |
-| 4 | 模型价格 CSV/JSON 导入 | ✅ | 管理后台可用 |
-| 5 | 上线成本估算 | ✅ | Vercel + Supabase + 上游 |
-| 6 | 平台正式价目表定稿 | ✅ | Scheme B CSV + models.ts 默认价 |
-| 7 | Vercel 部署 | ☐ | 下一步 |
+| 1 | `/chat` 页面（对话/图像/视频 + Key 选择） | ✅ | Session 鉴权 Web API |
+| 2 | 历史记录自动保存（链接存媒体） | ✅ | 待 Run `supabase-chat-features.sql` |
+| 3 | Veo 视频解析与媒体代理 | 🟡 | 已修响应格式，待实机复测 |
+| 4 | AI 对话功能完善与自测 | 🟡 | 见 docs/ai-chat-roadmap.md |
+| 5 | 网站使用说明页 `/dashboard/guide` | ✅ | 侧栏「数据看板」下方 |
+| 6 | 配置一次性跑齐 + 上线清单 | ☐ | 阶段 C |
 
-**今日小结**：本地三大厂商 API 已通；Scheme B 价目表已生成（`docs/yuhao-model-pricing.csv`），待管理后台导入生效。
+**今日小结**：AI 对话 MVP 已上线（/chat、历史、链接存图视频）；按三阶段推进：完善对话 → 使用说明页 → 批量配置。
 
 **明日优先**
-- [ ] 管理后台 → 模型价格 → 导入 `docs/yuhao-model-pricing.csv`
-- [ ] Vercel 部署
-- [ ] 更新本节「今日进度表」日期与上表
+- [ ] Run `supabase-chat-features.sql`，`npm run check:db` 验证
+- [ ] `/chat` 对话 + 图像 + 视频全流程自测
+- [ ] 按 [ai-chat-roadmap.md](./ai-chat-roadmap.md) 收尾阶段 A
+- [ ] 阶段 B：使用说明页内容按需补充
+- [ ] 阶段 C：对照 launch-checklist 一次性跑配置
 
 ---
 
@@ -40,6 +41,7 @@
 | 本地 API 测试 | 🟢 | DeepSeek / Google / OpenAI curl 通过 |
 | 管理后台功能 | 🟢 | 上游 Key、价格导入、共享余额 |
 | 定价策略 | 🟢 | Scheme B：USD×7.2×分档加价，CSV 已生成 |
+| AI 对话（/chat） | 🟡 | 功能已有，待 SQL + 自测 |
 | 上线部署 | ⚪ | Vercel + 正式域名 |
 
 ---
@@ -62,8 +64,10 @@
 - [x] 邀请奖励
 - [x] Gemini 2.0 下架
 - [x] 上游 Key 即时生效 + 模型价格批量导入
+- [x] `/chat` AI 对话（对话/图像/视频 + 历史记录）
+- [ ] `/chat` 数据库迁移执行 + 全流程自测
+- [x] 网站使用说明页（`/dashboard/guide`）
 - [ ] 虎皮椒等在线支付
-- [ ] Playground 图像预览
 
 ### 本地开发与测试
 

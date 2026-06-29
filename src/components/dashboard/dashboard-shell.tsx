@@ -2,6 +2,7 @@
 
 import {
   BarChart3,
+  BookOpen,
   Code2,
   CreditCard,
   LayoutDashboard,
@@ -10,6 +11,7 @@ import {
   Gift,
   LifeBuoy,
   Megaphone,
+  MessageSquare,
   Settings,
   Tags,
   Terminal,
@@ -25,6 +27,8 @@ import type { User } from "@supabase/supabase-js";
 
 const navItems = [
   { href: "/dashboard", label: "数据看板", icon: LayoutDashboard },
+  { href: "/dashboard/guide", label: "使用说明", icon: BookOpen },
+  { href: "/chat", label: "AI 对话", icon: MessageSquare },
   { href: "/console", label: "令牌管理", icon: Terminal },
   { href: "/playground", label: "API 调试", icon: Code2 },
   { href: "/pricing", label: "价格说明", icon: Tags },

@@ -1,4 +1,5 @@
 import { getModelApiKind, type ModelConfig } from "@/lib/models";
+import { sanitizeUpstreamErrorMessage } from "@/lib/upstream-error-message";
 import { resolveOpenAiUpstreamModelForRequest } from "@/lib/upstream-gateway";
 import { resolveUpstreamBaseUrl, upstreamFetch } from "@/lib/upstream-fetch";
 
@@ -52,7 +53,8 @@ export async function runOpenAiGeneration(
 
   const baseUrl = resolveUpstreamBaseUrl(
     modelConfig.provider,
-    modelConfig.baseUrl
+    modelConfig.baseUrl,
+    { apiKey }
   ).replace(/\/$/, "");
   const upstreamModel = resolveOpenAiUpstreamModelForRequest(
     modelConfig.id,
@@ -90,7 +92,10 @@ export async function runOpenAiGeneration(
       status: response.status,
       data: {
         error: {
-          message: data.error?.message || "OpenAI 图像生成失败",
+          message:
+            sanitizeUpstreamErrorMessage(
+              data.error?.message || "OpenAI 图像生成失败"
+            ),
           type: "upstream_error",
         },
       },
@@ -98,12 +103,16 @@ export async function runOpenAiGeneration(
   }
 
   const images = (data.data ?? [])
-    .map((item) => ({
-      b64_json: item.b64_json,
-      url: item.url,
-      revised_prompt: item.revised_prompt,
-    }))
-    .filter((item) => item.b64_json || item.url);
+    .map((item) => {
+      if (item.url) {
+        return { url: item.url, mime_type: "image/png" as const };
+      }
+      if (item.b64_json) {
+        return { b64_json: item.b64_json, mime_type: "image/png" as const };
+      }
+      return null;
+    })
+    .filter((item): item is NonNullable<typeof item> => item !== null);
 
   if (images.length === 0) {
     return {

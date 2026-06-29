@@ -160,3 +160,139 @@ export async function authenticateApiKeyRequest(
     modelConfig,
   };
 }
+
+export async function authenticateUserKeyById(
+  userId: string,
+  keyId: string,
+  requestedModel?: string
+): Promise<ApiKeyAuthResult> {
+  if (!keyId.trim()) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: { message: "请选择 API Key", type: "auth_error" } },
+        { status: 400 }
+      ),
+    };
+  }
+
+  const admin = createAdminClient();
+
+  let keyResult = await admin
+    .from("api_keys")
+    .select(KEY_AUTH_SELECT_FULL)
+    .eq("id", keyId.trim())
+    .eq("user_id", userId)
+    .single();
+
+  if (keyResult.error && isMissingModelColumnsError(keyResult.error.message)) {
+    keyResult = await admin
+      .from("api_keys")
+      .select(KEY_AUTH_SELECT_LEGACY)
+      .eq("id", keyId.trim())
+      .eq("user_id", userId)
+      .single();
+  }
+
+  const row = keyResult.data;
+  if (keyResult.error || !row) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: { message: "密钥不存在或无权访问", type: "auth_error" } },
+        { status: 404 }
+      ),
+    };
+  }
+
+  if (!row.is_active) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: { message: "API Key 已被禁用", type: "auth_error" } },
+        { status: 403 }
+      ),
+    };
+  }
+
+  if (await isUserFrozen(row.user_id)) {
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            message: "账户已被冻结，API 调用已暂停",
+            type: "auth_error",
+          },
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
+  const modelId =
+    typeof requestedModel === "string" && requestedModel.trim()
+      ? requestedModel.trim()
+      : (row.default_model_id as string | undefined) ?? DEFAULT_MODEL_ID;
+
+  if (!modelId) {
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            message: "请指定 model 参数",
+            type: "invalid_request_error",
+          },
+        },
+        { status: 400 }
+      ),
+    };
+  }
+
+  const modelConfig = await getEffectiveModelConfig(modelId);
+  if (!modelConfig) {
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            message: `不支持的模型: ${modelId}`,
+            type: "invalid_request_error",
+          },
+        },
+        { status: 400 }
+      ),
+    };
+  }
+
+  const allowedCategories = resolveAllowedCategoryIds(
+    row.allowed_category_ids as string[] | undefined
+  );
+
+  if (!isModelAllowedForKey(modelId, allowedCategories)) {
+    return {
+      ok: false,
+      response: Response.json(
+        {
+          error: {
+            message: `此 API Key 无权调用模型 ${modelId}，请在令牌管理勾选对应分组`,
+            type: "permission_error",
+          },
+        },
+        { status: 403 }
+      ),
+    };
+  }
+
+  return {
+    ok: true,
+    apiKey: {
+      id: row.id,
+      user_id: row.user_id,
+      balance: Number(row.balance),
+      allowedCategories,
+    },
+    modelConfig,
+  };
+}

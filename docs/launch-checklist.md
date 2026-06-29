@@ -20,7 +20,9 @@
 | ② | `supabase-api-key-models.sql` | 令牌「分组 + 默认模型」列（旧库若 ① 已含可跳过） |
 | ③ | `supabase-admin-schema.sql` | 管理后台收款配置表（若 ① 已含可跳过） |
 | ④ | `supabase-storage-payment.sql` | 收款码图片 Storage 桶（要用上传收款码时执行） |
-| ⑤ | `supabase-max-admins.sql` | 最多 2 个管理员（可选） |
+| ⑤ | `supabase-storage-payment.sql` | 收款码图片 Storage 桶（要用上传收款码时执行） |
+| ⑥ | **`supabase-chat-features.sql`** | **AI 对话历史 + chat-media 媒体桶（用 `/chat` 时执行）** |
+| ⑦ | `supabase-max-admins.sql` | 最多 2 个管理员（可选） |
 
 > 若你只有空表 `api_keys`、没有 `recharge_records`，必须先有 ① 或单独 Run `supabase-recharge-records.sql`，再 Run 邀请相关 SQL。
 
@@ -73,7 +75,13 @@ npm run dev
 - [ ] `/dashboard/referral` 无「数据库未初始化」黄条  
 - [ ] 注册链接带 `?aff=邀请码` 可绑定（若已测过可跳过）  
 
-### 2.5 其它
+### 2.5 AI 对话（`/chat`）
+
+- [ ] 已 Run **`supabase-chat-features.sql`**，`npm run check:db` 含 `chat_sessions` / `chat_messages` ✓  
+- [ ] 登录 → `/chat` → 选 Key → 对话 / 图像 / 视频各测一轮  
+- [ ] 历史记录有保存、可加载、可删除；图像/视频可下载  
+
+### 2.6 其它
 
 - [ ] `/dashboard/settings`：仅邮箱改密/换绑，无手机相关项  
 - [ ] 数据看板有统计（有调用后更明显）  

@@ -27,6 +27,18 @@ export function isVercelAiGatewayBaseUrl(baseUrl: string): boolean {
   );
 }
 
+/** Vercel AI Gateway 专用 Key（与 OpenAI sk- Key 不可混用） */
+export function isVercelAiGatewayApiKey(apiKey?: string | null): boolean {
+  return Boolean(apiKey?.trim().startsWith("vck_"));
+}
+
+export function shouldUseVercelAiGateway(options?: {
+  apiKey?: string | null;
+}): boolean {
+  if (isVercelAiGatewayApiKey(options?.apiKey)) return true;
+  return isVercelAiGatewayEnabled();
+}
+
 /** 发往上游的 model 参数（Gateway 需 openai/ 前缀） */
 export function resolveOpenAiUpstreamModelId(
   platformModelId: string,

@@ -1,5 +1,5 @@
 import {
-  isVercelAiGatewayEnabled,
+  shouldUseVercelAiGateway,
   VERCEL_AI_GATEWAY_BASE_URL,
 } from "@/lib/upstream-gateway";
 import { ProxyAgent, fetch as undiciFetch } from "undici";
@@ -26,13 +26,14 @@ export type UpstreamProvider = "openai" | "google" | "deepseek" | "anthropic";
 /** .env.local 可覆盖各厂商 baseUrl；OpenAI 在启用 Gateway 时默认走 Vercel AI Gateway */
 export function resolveUpstreamBaseUrl(
   provider: string,
-  defaultBaseUrl: string
+  defaultBaseUrl: string,
+  options?: { apiKey?: string | null }
 ): string {
   const envKey = `${provider.toUpperCase()}_BASE_URL`;
   const override = process.env[envKey]?.trim();
   if (override) return override;
 
-  if (provider === "openai" && isVercelAiGatewayEnabled()) {
+  if (provider === "openai" && shouldUseVercelAiGateway(options)) {
     return VERCEL_AI_GATEWAY_BASE_URL;
   }
 

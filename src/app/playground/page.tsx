@@ -1,7 +1,12 @@
 "use client";
 
 import { ApiIntegrationSnippets } from "@/components/api/api-integration-snippets";
+import { GenerationMediaPreview } from "@/components/generation/generation-media-preview";
 import { getStoredModelId, setStoredModelId } from "@/components/models/model-catalog";
+import {
+  parseGenerationResponse,
+  type ParsedGenerationMedia,
+} from "@/lib/generation-media";
 import {
   getPlaygroundApiKey,
   setPlaygroundApiKey,
@@ -26,7 +31,8 @@ function PlaygroundContent() {
   const [loading, setLoading] = useState(false);
   const [loggedIn, setLoggedIn] = useState(false);
   const [billingNote, setBillingNote] = useState("");
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
+  const [generationMedia, setGenerationMedia] =
+    useState<ParsedGenerationMedia | null>(null);
   const [callSucceeded, setCallSucceeded] = useState(false);
 
   useEffect(() => {
@@ -103,7 +109,7 @@ function PlaygroundContent() {
     setLoading(true);
     setResponse("");
     setBillingNote("");
-    setImagePreview(null);
+    setGenerationMedia(null);
     setCallSucceeded(false);
 
     const isGeneration = modelApiKind !== "chat";
@@ -136,12 +142,8 @@ function PlaygroundContent() {
         setCallSucceeded(true);
       }
 
-      const firstImage = data?.data?.[0];
-      if (firstImage?.b64_json) {
-        const mime = firstImage.mime_type || "image/png";
-        setImagePreview(`data:${mime};base64,${firstImage.b64_json}`);
-      } else if (firstImage?.url) {
-        setImagePreview(firstImage.url);
+      if (isGeneration) {
+        setGenerationMedia(parseGenerationResponse(data));
       }
 
       const cost = res.headers.get("X-Yuhao-Billing-Cost-Cny");
@@ -262,18 +264,12 @@ function PlaygroundContent() {
             />
           )}
 
-          {imagePreview && (
-            <div className="mt-4">
-              <label className="mb-1.5 block text-sm text-muted">图像预览</label>
-              <div className="overflow-hidden rounded-lg border border-border bg-white p-3">
-                {/* eslint-disable-next-line @next/next/no-img-element */}
-                <img
-                  src={imagePreview}
-                  alt="生成结果"
-                  className="mx-auto max-h-96 w-auto rounded-md object-contain"
-                />
-              </div>
-            </div>
+          {generationMedia && (
+            <GenerationMediaPreview
+              media={generationMedia}
+              modelId={model}
+              className="mt-4"
+            />
           )}
 
           {response && (

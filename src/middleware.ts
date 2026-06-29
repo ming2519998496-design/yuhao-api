@@ -24,7 +24,7 @@ function applyPrivatePageCacheHeaders(response: NextResponse) {
 }
 
 function isPrivatePage(pathname: string): boolean {
-  const prefixes = ["/dashboard", "/recharge", "/console", "/admin"];
+  const prefixes = ["/dashboard", "/recharge", "/console", "/admin", "/chat"];
   return prefixes.some(
     (prefix) => pathname === prefix || pathname.startsWith(`${prefix}/`)
   );

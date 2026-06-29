@@ -13,10 +13,18 @@ export async function GET() {
 
   try {
     const balances = await fetchAllUpstreamBalances();
-    return NextResponse.json({
-      balances,
-      checkedAt: new Date().toISOString(),
-    });
+    return NextResponse.json(
+      {
+        balances,
+        checkedAt: new Date().toISOString(),
+      },
+      {
+        headers: {
+          "Cache-Control": "no-store, no-cache, must-revalidate",
+          Pragma: "no-cache",
+        },
+      }
+    );
   } catch (e) {
     const message = e instanceof Error ? e.message : "查询失败";
     return NextResponse.json({ error: message }, { status: 500 });

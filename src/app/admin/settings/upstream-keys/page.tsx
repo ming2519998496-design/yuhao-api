@@ -7,7 +7,10 @@ import {
   type UpstreamKeysConfig,
 } from "@/lib/upstream-keys-settings";
 import { Eye, EyeOff, KeyRound, Lock, RefreshCw, Save, ShieldAlert, Wallet } from "lucide-react";
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
+
+/** 页面打开时自动轮询上游余额（DeepSeek / Vercel Gateway 等） */
+const BALANCE_AUTO_REFRESH_MS = 60_000;
 
 type UpstreamBalanceStatus =
   | "ok"
@@ -86,17 +89,25 @@ export default function AdminUpstreamKeysPage() {
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceCheckedAt, setBalanceCheckedAt] = useState<string | null>(null);
 
-  const loadBalances = useCallback(async () => {
-    setBalanceLoading(true);
+  const balanceRefreshing = useRef(false);
+
+  const loadBalances = useCallback(async (options?: { silent?: boolean }) => {
+    if (balanceRefreshing.current) return;
+    balanceRefreshing.current = true;
+    if (!options?.silent) setBalanceLoading(true);
     try {
-      const res = await fetch("/api/admin/settings/upstream-keys/balance");
+      const res = await fetch(
+        `/api/admin/settings/upstream-keys/balance?t=${Date.now()}`,
+        { cache: "no-store" }
+      );
       const data = await res.json();
       if (res.ok) {
         setBalances(data.balances ?? []);
         setBalanceCheckedAt(data.checkedAt ?? null);
       }
     } finally {
-      setBalanceLoading(false);
+      balanceRefreshing.current = false;
+      if (!options?.silent) setBalanceLoading(false);
     }
   }, []);
 
@@ -119,6 +130,24 @@ export default function AdminUpstreamKeysPage() {
     void load();
     void loadBalances();
   }, [load, loadBalances]);
+
+  useEffect(() => {
+    const timer = window.setInterval(() => {
+      void loadBalances({ silent: true });
+    }, BALANCE_AUTO_REFRESH_MS);
+    return () => window.clearInterval(timer);
+  }, [loadBalances]);
+
+  useEffect(() => {
+    function onVisibilityChange() {
+      if (document.visibilityState === "visible") {
+        void loadBalances({ silent: true });
+      }
+    }
+    document.addEventListener("visibilitychange", onVisibilityChange);
+    return () =>
+      document.removeEventListener("visibilitychange", onVisibilityChange);
+  }, [loadBalances]);
 
   function lockView() {
     setUnlocked(false);
@@ -188,6 +217,7 @@ export default function AdminUpstreamKeysPage() {
     setMessage(
       tailNote ? `${data.message ?? "保存成功"}（${tailNote}）` : (data.message ?? "保存成功")
     );
+    void loadBalances({ silent: true });
   }
 
   function updateKey(id: keyof UpstreamKeysConfig, value: string) {
@@ -229,7 +259,8 @@ export default function AdminUpstreamKeysPage() {
                     上游余额 / 状态
                   </h2>
                   <p className="mt-1 text-xs text-muted">
-                    DeepSeek 与 Vercel AI Gateway 可实时查余额；Gemini 仅校验 Key 有效，配额请至 AI Studio 查看。
+                    DeepSeek 与 Vercel AI Gateway 可实时查余额；Gemini 仅校验 Key
+                    有效，配额请至 AI Studio 查看。每 60 秒自动刷新，从充值页返回时也会更新。
                     {balanceCheckedAt && (
                       <>
                         {" "}
@@ -242,7 +273,7 @@ export default function AdminUpstreamKeysPage() {
                 <button
                   type="button"
                   disabled={balanceLoading}
-                  onClick={() => void loadBalances()}
+                  onClick={() => void loadBalances({ silent: false })}
                   className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-2 text-sm font-medium text-muted transition-colors hover:bg-accent/5 hover:text-foreground disabled:opacity-50"
                 >
                   <RefreshCw

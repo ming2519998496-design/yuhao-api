@@ -5,6 +5,7 @@ import {
 } from "@/lib/upstream-gateway";
 import {
   resolveUpstreamApiKeyMeta,
+  tailUpstreamKey,
   type UpstreamKeySource,
 } from "@/lib/upstream-keys-store";
 import {
@@ -32,6 +33,8 @@ export type UpstreamBalanceEntry = {
   isAvailable?: boolean;
   detail?: string;
   keySource?: UpstreamKeySource;
+  /** 用于核对是否与官网充值账户一致 */
+  keyTail?: string;
   dashboardUrl?: string;
   checkedAt: string;
 };
@@ -67,6 +70,14 @@ async function readJsonResponse(response: Response): Promise<unknown> {
   }
 }
 
+function upstreamBalanceHeaders(): HeadersInit {
+  return {
+    Accept: "application/json",
+    "Cache-Control": "no-cache, no-store",
+    Pragma: "no-cache",
+  };
+}
+
 async function fetchVercelGatewayCredits(
   apiKey: string
 ): Promise<Omit<UpstreamBalanceEntry, "provider" | "label">> {
@@ -74,9 +85,10 @@ async function fetchVercelGatewayCredits(
   const response = await upstreamFetch(`${VERCEL_AI_GATEWAY_BASE_URL}/credits`, {
     method: "GET",
     headers: {
+      ...upstreamBalanceHeaders(),
       Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json",
     },
+    cache: "no-store",
   });
 
   const data = (await readJsonResponse(response)) as {
@@ -131,9 +143,10 @@ async function fetchDeepSeekBalance(
   const response = await upstreamFetch("https://api.deepseek.com/user/balance", {
     method: "GET",
     headers: {
+      ...upstreamBalanceHeaders(),
       Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json",
     },
+    cache: "no-store",
   });
 
   const data = (await readJsonResponse(response)) as {
@@ -159,12 +172,8 @@ async function fetchDeepSeekBalance(
   }
 
   const infos = data.balance_infos ?? [];
-  const preferred =
-    infos.find((i) => i.currency === "CNY") ??
-    infos.find((i) => i.currency === "USD") ??
-    infos[0];
 
-  if (!preferred) {
+  if (infos.length === 0) {
     return {
       ...base,
       status: "error",
@@ -173,6 +182,15 @@ async function fetchDeepSeekBalance(
       dashboardUrl: "https://platform.deepseek.com/top_up",
     };
   }
+
+  const sorted = [...infos].sort(
+    (a, b) =>
+      Number(b.total_balance ?? 0) - Number(a.total_balance ?? 0)
+  );
+  const preferred =
+    sorted.find((i) => i.currency === "CNY") ??
+    sorted.find((i) => i.currency === "USD") ??
+    sorted[0];
 
   const currency = preferred.currency ?? "CNY";
   const total = Number(preferred.total_balance ?? NaN);
@@ -195,6 +213,16 @@ async function fetchDeepSeekBalance(
     message = `余额偏低（${currency} ${balance}），建议尽快充值`;
   }
 
+  const detail =
+    infos.length > 1
+      ? infos
+          .map(
+            (i) =>
+              `${i.currency ?? "?"} ${i.total_balance ?? "—"}（赠送 ${i.granted_balance ?? "0"} · 充值 ${i.topped_up_balance ?? "0"}）`
+          )
+          .join("；")
+      : `赠送 ${granted} · 充值 ${toppedUp}`;
+
   return {
     ...base,
     status,
@@ -202,7 +230,7 @@ async function fetchDeepSeekBalance(
     balance,
     currency,
     isAvailable: data.is_available,
-    detail: `赠送 ${granted} · 充值 ${toppedUp}`,
+    detail,
     dashboardUrl: "https://platform.deepseek.com/top_up",
   };
 }
@@ -215,7 +243,8 @@ async function fetchGoogleKeyHealth(
 
   const response = await upstreamFetch(url, {
     method: "GET",
-    headers: { Accept: "application/json" },
+    headers: upstreamBalanceHeaders(),
+    cache: "no-store",
   });
 
   const data = (await readJsonResponse(response)) as {
@@ -259,9 +288,10 @@ async function fetchOpenAiBalance(
   const response = await upstreamFetch(`${openAiBase.replace(/\/$/, "")}/models`, {
     method: "GET",
     headers: {
+      ...upstreamBalanceHeaders(),
       Authorization: `Bearer ${apiKey}`,
-      Accept: "application/json",
     },
+    cache: "no-store",
   });
 
   if (!response.ok) {
@@ -314,6 +344,7 @@ export async function fetchUpstreamBalance(
       provider,
       label,
       keySource: meta.source,
+      keyTail: tailUpstreamKey(meta.key),
       ...result,
     };
   } catch (e) {

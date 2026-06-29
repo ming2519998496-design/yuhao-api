@@ -29,9 +29,17 @@ type BalanceEntry = {
   currency?: string;
   totalUsed?: string;
   detail?: string;
+  keySource?: "database" | "env" | "none";
+  keyTail?: string;
   dashboardUrl?: string;
   checkedAt: string;
 };
+
+function keySourceLabel(source?: BalanceEntry["keySource"]): string {
+  if (source === "database") return "后台配置";
+  if (source === "env") return "环境变量";
+  return "";
+}
 
 function balanceStatusClass(status: UpstreamBalanceStatus): string {
   switch (status) {
@@ -89,11 +97,10 @@ export default function AdminUpstreamKeysPage() {
   const [balanceLoading, setBalanceLoading] = useState(false);
   const [balanceCheckedAt, setBalanceCheckedAt] = useState<string | null>(null);
 
-  const balanceRefreshing = useRef(false);
+  const balanceRequestId = useRef(0);
 
   const loadBalances = useCallback(async (options?: { silent?: boolean }) => {
-    if (balanceRefreshing.current) return;
-    balanceRefreshing.current = true;
+    const requestId = ++balanceRequestId.current;
     if (!options?.silent) setBalanceLoading(true);
     try {
       const res = await fetch(
@@ -101,13 +108,15 @@ export default function AdminUpstreamKeysPage() {
         { cache: "no-store" }
       );
       const data = await res.json();
+      if (requestId !== balanceRequestId.current) return;
       if (res.ok) {
         setBalances(data.balances ?? []);
         setBalanceCheckedAt(data.checkedAt ?? null);
       }
     } finally {
-      balanceRefreshing.current = false;
-      if (!options?.silent) setBalanceLoading(false);
+      if (requestId === balanceRequestId.current && !options?.silent) {
+        setBalanceLoading(false);
+      }
     }
   }, []);
 
@@ -261,6 +270,7 @@ export default function AdminUpstreamKeysPage() {
                   <p className="mt-1 text-xs text-muted">
                     DeepSeek 与 Vercel AI Gateway 可实时查余额；Gemini 仅校验 Key
                     有效，配额请至 AI Studio 查看。每 60 秒自动刷新，从充值页返回时也会更新。
+                    余额以当前配置的 API Key 对应账号为准，请核对卡片上的 Key 尾号是否与官网充值账户一致。
                     {balanceCheckedAt && (
                       <>
                         {" "}
@@ -295,6 +305,12 @@ export default function AdminUpstreamKeysPage() {
                         {balanceStatusLabel(item.status)}
                       </span>
                     </div>
+                    {item.keyTail && (
+                      <p className="mt-1 text-[10px] text-muted">
+                        查询 Key：{item.keyTail}
+                        {item.keySource ? `（${keySourceLabel(item.keySource)}）` : ""}
+                      </p>
+                    )}
                     {item.balance && item.currency && (
                       <p className="mt-2 text-lg font-semibold tabular-nums">
                         {item.currency === "USD" ? "$" : ""}

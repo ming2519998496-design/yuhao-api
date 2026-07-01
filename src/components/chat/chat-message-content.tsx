@@ -10,7 +10,16 @@ import "katex/dist/katex.min.css";
 import { useMemo } from "react";
 
 const markdownComponents: Components = {
-  p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
+  h1: ({ children }) => (
+    <h1 className="mb-3 mt-1 text-lg font-semibold text-foreground">{children}</h1>
+  ),
+  h2: ({ children }) => (
+    <h2 className="mb-2 mt-4 text-base font-semibold text-foreground">{children}</h2>
+  ),
+  h3: ({ children }) => (
+    <h3 className="mb-2 mt-3 text-sm font-semibold text-foreground">{children}</h3>
+  ),
+  p: ({ children }) => <p className="mb-3 last:mb-0 leading-relaxed">{children}</p>,
   ul: ({ children }) => (
     <ul className="mb-3 list-disc space-y-1 pl-5 last:mb-0">{children}</ul>
   ),
@@ -22,6 +31,16 @@ const markdownComponents: Components = {
     <strong className="font-semibold text-foreground">{children}</strong>
   ),
   code: ({ className, children, ...props }) => {
+    if (
+      className?.includes("math-inline") ||
+      className?.includes("math-display")
+    ) {
+      return (
+        <code className={className} {...props}>
+          {children}
+        </code>
+      );
+    }
     const isBlock = className?.includes("language-");
     if (isBlock) {
       return (
@@ -50,6 +69,7 @@ const markdownComponents: Components = {
       {children}
     </blockquote>
   ),
+  hr: () => <hr className="my-4 border-border" />,
   a: ({ href, children }) => (
     <a
       href={href}

@@ -2,10 +2,17 @@
  * 将各厂商模型常见的数学写法统一为 remark-math 可识别的 $ / $$ 分隔符。
  * - Gemini：$...$、$$...$$
  * - OpenAI / ChatGPT：\[...\]、\(...\)、[ \sqrt{...} ]
+ * - DeepSeek：\boxed{...}、行内裸 LaTeX 等
  */
 
 const LATEX_COMMAND =
-  /\\(?:frac|sqrt|times|cdot|div|text|left|right|begin|end|quad|qquad|sum|int|lim|alpha|beta|gamma|pi|theta|leq|geq|neq|approx|pm|mp)\b/;
+  /\\(?:boxed|dfrac|tfrac|frac|sqrt|times|cdot|div|text|left|right|begin|end|quad|qquad|sum|int|lim|alpha|beta|gamma|pi|theta|leq|geq|neq|approx|pm|mp|mathrm|mathbf|displaystyle)\b/;
+
+function isAlreadyWrapped(offset: number, match: string, full: string): boolean {
+  const before = full[offset - 1];
+  const after = full[offset + match.length];
+  return before === "$" || after === "$";
+}
 
 function looksLikeLatex(value: string): boolean {
   const s = value.trim();
@@ -14,7 +21,6 @@ function looksLikeLatex(value: string): boolean {
   if (/[\^_]/.test(s)) return true;
   if (/\d+\s*\^/.test(s)) return true;
   if (/\\[()[\]{}]/.test(s)) return true;
-  // 纯算式行，如 [ = 1 ]、[ (a-b)^2 = 4 ]
   if (
     s.length <= 48 &&
     /^[\s=+\-*/().,0-9a-zA-Z^\\{}[\]|]+$/.test(s) &&
@@ -34,11 +40,15 @@ function normalizeMathUnicode(math: string): string {
 }
 
 function toInlineMath(inner: string): string {
-  return `$${normalizeMathUnicode(inner.trim())}$`;
+  const trimmed = inner.trim();
+  if (trimmed.startsWith("$") && trimmed.endsWith("$")) return trimmed;
+  return `$${normalizeMathUnicode(trimmed)}$`;
 }
 
 function toBlockMath(inner: string): string {
-  return `\n$$\n${normalizeMathUnicode(inner.trim())}\n$$\n`;
+  const trimmed = inner.trim();
+  if (trimmed.startsWith("$$") && trimmed.endsWith("$$")) return trimmed;
+  return `\n$$\n${normalizeMathUnicode(trimmed)}\n$$\n`;
 }
 
 function shouldUseBlockMath(inner: string): boolean {
@@ -48,6 +58,89 @@ function shouldUseBlockMath(inner: string): boolean {
     trimmed.length > 72 ||
     /\\frac|\\sqrt|\\begin|\\displaystyle/.test(trimmed)
   );
+}
+
+function isInsideMathString(offset: number, full: string): boolean {
+  const before = full.slice(0, offset);
+  let inMath = false;
+  for (let i = 0; i < before.length; i++) {
+    if (before[i] === "\\") {
+      i++;
+      continue;
+    }
+    if (before[i] === "$") inMath = !inMath;
+  }
+  return inMath;
+}
+
+function wrapBoxedExpressions(text: string): string {
+  const marker = "\\boxed{";
+  let result = text;
+  let searchFrom = 0;
+
+  while (searchFrom < result.length) {
+    const idx = result.indexOf(marker, searchFrom);
+    if (idx === -1) break;
+    if (isAlreadyWrapped(idx, marker, result) || isInsideMathString(idx, result)) {
+      searchFrom = idx + marker.length;
+      continue;
+    }
+
+    const contentStart = idx + marker.length;
+    let depth = 1;
+    let i = contentStart;
+    while (i < result.length && depth > 0) {
+      const ch = result[i];
+      if (ch === "\\") {
+        i += 2;
+        continue;
+      }
+      if (ch === "{") depth++;
+      else if (ch === "}") depth--;
+      i++;
+    }
+    if (depth !== 0) break;
+
+    const full = result.slice(idx, i);
+    const wrapped = toInlineMath(full);
+    result = result.slice(0, idx) + wrapped + result.slice(i);
+    searchFrom = idx + wrapped.length;
+  }
+
+  return result;
+}
+
+/** 匹配一层嵌套花括号的 LaTeX 片段 */
+const NESTED_BRACE_CHUNK = /(?:[^{}]|\{(?:[^{}]|\{[^{}]*\})*\})*/;
+
+function convertBareLatex(text: string): string {
+  let result = wrapBoxedExpressions(text);
+
+  const barePatterns = [
+    new RegExp(
+      `\\\\(?:dfrac|tfrac|frac)\\{${NESTED_BRACE_CHUNK.source}\\}\\{${NESTED_BRACE_CHUNK.source}\\}`,
+      "g"
+    ),
+    /\\sqrt\{[^{}]+\}/g,
+  ];
+
+  for (const pattern of barePatterns) {
+    result = result.replace(pattern, (match, offset) => {
+      if (isAlreadyWrapped(offset, match, result)) return match;
+      if (isInsideMathString(offset, result)) return match;
+      return toInlineMath(match);
+    });
+  }
+
+  result = result.replace(
+    /^([ \t]*)(\\[^\n$]+)$/gm,
+    (full, indent: string, latex: string) => {
+      if (!looksLikeLatex(latex)) return full;
+      return `${indent}${shouldUseBlockMath(latex) ? toBlockMath(latex) : toInlineMath(latex)}`;
+    }
+  );
+
+  return result;
 }
 
 function convertBracketMath(text: string): string {
@@ -89,6 +182,7 @@ export function normalizeChatMathDelimiters(content: string): string {
       text = convertFencedMath(text);
       text = convertLatexDelimiters(text);
       text = convertBracketMath(text);
+      text = convertBareLatex(text);
       return text;
     })
     .join("");

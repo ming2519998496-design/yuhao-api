@@ -1,3 +1,5 @@
+import { sanitizeUpstreamErrorMessage } from "@/lib/upstream-error-message";
+
 export type ChatRole = "user" | "assistant";
 
 export type ChatPayloadMessage = {
@@ -75,7 +77,11 @@ export async function requestChatCompletion(
     const data = (await response.json().catch(() => ({}))) as {
       error?: { message?: string };
     };
-    options.onError(data.error?.message ?? `请求失败 (${response.status})`);
+    options.onError(
+      sanitizeUpstreamErrorMessage(
+        data.error?.message ?? `请求失败 (${response.status})`
+      )
+    );
     return;
   }
 
@@ -86,7 +92,7 @@ export async function requestChatCompletion(
       error?: { message?: string };
     };
     if (data.error?.message) {
-      options.onError(data.error.message);
+      options.onError(sanitizeUpstreamErrorMessage(data.error.message));
       return;
     }
     const text = data.choices?.[0]?.message?.content ?? "";
@@ -163,9 +169,10 @@ export async function requestGeneration(options: {
 
   const data = await response.json().catch(() => ({}));
   if (!response.ok) {
-    const message =
+    const message = sanitizeUpstreamErrorMessage(
       (data as { error?: { message?: string } }).error?.message ??
-      `请求失败 (${response.status})`;
+        `请求失败 (${response.status})`
+    );
     return { ok: false, message };
   }
 

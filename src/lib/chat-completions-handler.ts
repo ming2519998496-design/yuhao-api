@@ -15,7 +15,7 @@ import {
 import { getEffectiveModelConfig } from "@/lib/model-pricing-store";
 import { isChatModel, type ModelPricing } from "@/lib/models";
 import { resolveUpstreamApiKey } from "@/lib/upstream-keys-store";
-import { resolveUpstreamBaseUrl, upstreamFetch } from "@/lib/upstream-fetch";
+import { upstreamFetch } from "@/lib/upstream-fetch";
 import {
   isVercelAiGatewayBaseUrl,
   resolveOpenAiUpstreamModelForRequest,
@@ -209,6 +209,7 @@ function hasToolCallingParams(body: Record<string, unknown>): boolean {
 async function handleOpenAIProxy(
   modelConfig: {
     id: string;
+    provider: string;
     baseUrl: string;
     upstreamModelId?: string;
   },
@@ -223,18 +224,22 @@ async function handleOpenAIProxy(
     messages,
     ...rest,
   });
-  const openAiBaseUrl = resolveUpstreamBaseUrl(
-    "openai",
-    modelConfig.baseUrl,
-    { apiKey: apiKeyValue }
-  ).replace(/\/$/, "");
+  // baseUrl 已在 model-pricing-store 按厂商解析；勿用 provider "openai" 重算，
+  // 否则 Vercel 部署时 DeepSeek 会误走 AI Gateway 并报 AI_GATEWAY_API_KEY 错误。
+  const upstreamBaseUrl = modelConfig.baseUrl.replace(/\/$/, "");
   const upstreamModel = resolveOpenAiUpstreamModelForRequest(
     modelConfig.id,
-    openAiBaseUrl,
+    upstreamBaseUrl,
     modelConfig.upstreamModelId
   );
-  const viaGateway = isVercelAiGatewayBaseUrl(openAiBaseUrl);
-  const url = `${openAiBaseUrl}/chat/completions`;
+  const viaGateway = isVercelAiGatewayBaseUrl(upstreamBaseUrl);
+  const isDeepSeek = modelConfig.provider === "deepseek";
+  const upstreamLabel = isDeepSeek
+    ? "DeepSeek"
+    : viaGateway
+      ? "AI Gateway"
+      : "OpenAI";
+  const url = `${upstreamBaseUrl}/chat/completions`;
 
   if (isStreamingRequested(rest)) {
     return handleOpenAIStreamProxy({
@@ -276,16 +281,18 @@ async function handleOpenAIProxy(
         });
       } catch (e) {
         const msg =
-          e instanceof Error ? e.message : "无法连接 OpenAI 上游";
-        const hint = viaGateway
-          ? "请检查 AI Gateway Key 是否有效，或 Vercel 项目是否已开通 AI Gateway"
-          : "请检查服务器能否访问 api.openai.com，或上游 Key 是否有效";
+          e instanceof Error ? e.message : `无法连接 ${upstreamLabel} 上游`;
+        const hint = isDeepSeek
+          ? "请检查管理后台或环境变量中的 DEEPSEEK_API_KEY 是否有效"
+          : viaGateway
+            ? "请检查 AI Gateway Key 是否有效，或 Vercel 项目是否已开通 AI Gateway"
+            : "请检查服务器能否访问 api.openai.com，或上游 Key 是否有效";
         return {
           ok: false,
           status: 502,
           data: {
             error: {
-              message: `OpenAI 网络请求失败：${msg}（${hint}）`,
+              message: `${upstreamLabel} 网络请求失败：${msg}（${hint}）`,
               type: "upstream_error",
             },
           },
@@ -303,7 +310,7 @@ async function handleOpenAIProxy(
             status: response.status || 502,
             data: {
               error: {
-                message: `OpenAI 返回异常响应（HTTP ${response.status}）`,
+                message: `${upstreamLabel} 返回异常响应（HTTP ${response.status}）`,
                 type: "upstream_error",
               },
             },

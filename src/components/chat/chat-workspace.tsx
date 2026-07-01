@@ -1,6 +1,7 @@
 "use client";
 
 import { ChatHistoryPanel } from "@/components/chat/chat-history-panel";
+import { ChatMessageContent } from "@/components/chat/chat-message-content";
 import { GenerationMediaPreview } from "@/components/generation/generation-media-preview";
 import {
   filterModelsForKey,
@@ -750,12 +751,19 @@ export function ChatWorkspace() {
                   )}
                 >
                   {message.content && (
-                    <p className="whitespace-pre-wrap break-words">
-                      {message.content}
-                      {message.streaming && (
-                        <span className="ml-1 inline-block h-4 w-1.5 animate-pulse bg-accent align-middle" />
-                      )}
-                    </p>
+                    message.role === "assistant" && !message.error ? (
+                      <ChatMessageContent
+                        content={message.content}
+                        streaming={message.streaming}
+                      />
+                    ) : (
+                      <p className="whitespace-pre-wrap break-words">
+                        {message.content}
+                        {message.streaming && (
+                          <span className="ml-1 inline-block h-4 w-1.5 animate-pulse bg-accent align-middle" />
+                        )}
+                      </p>
+                    )
                   )}
                   {message.media && (
                     <GenerationMediaPreview

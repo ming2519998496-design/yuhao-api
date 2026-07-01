@@ -119,3 +119,14 @@
 .animate-pulse-glow {
   animation: pulse-glow 4s ease-in-out infinite;
 }
+
+/* AI 对话：Markdown + KaTeX 数学公式 */
+.chat-markdown .katex-display {
+  margin: 0.75rem 0;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
+
+.chat-markdown .katex {
+  font-size: 1.05em;
+}

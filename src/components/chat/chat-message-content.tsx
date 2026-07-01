@@ -5,7 +5,9 @@ import ReactMarkdown from "react-markdown";
 import rehypeKatex from "rehype-katex";
 import remarkGfm from "remark-gfm";
 import remarkMath from "remark-math";
+import { normalizeChatMathDelimiters } from "@/lib/chat-math-normalize";
 import "katex/dist/katex.min.css";
+import { useMemo } from "react";
 
 const markdownComponents: Components = {
   p: ({ children }) => <p className="mb-3 last:mb-0">{children}</p>,
@@ -67,6 +69,11 @@ export function ChatMessageContent({
   content: string;
   streaming?: boolean;
 }) {
+  const normalized = useMemo(
+    () => normalizeChatMathDelimiters(content),
+    [content]
+  );
+
   if (streaming) {
     return (
       <div className="chat-markdown whitespace-pre-wrap break-words">
@@ -80,10 +87,10 @@ export function ChatMessageContent({
     <div className="chat-markdown break-words">
       <ReactMarkdown
         remarkPlugins={[remarkGfm, remarkMath]}
-        rehypePlugins={[rehypeKatex]}
+        rehypePlugins={[[rehypeKatex, { throwOnError: false, strict: false }]]}
         components={markdownComponents}
       >
-        {content}
+        {normalized}
       </ReactMarkdown>
     </div>
   );

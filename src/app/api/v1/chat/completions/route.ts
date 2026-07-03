@@ -1,5 +1,10 @@
 import { runChatCompletions } from "@/lib/chat-completions-handler";
 import { isUserFrozen } from "@/lib/account-frozen";
+import {
+  apiKeyAuthRateLimitResponse,
+  enforceApiKeyAuthAllowed,
+  recordFailedApiKeyAttempt,
+} from "@/lib/anti-abuse";
 import { apiServerErrorResponse } from "@/lib/api-error";
 import {
   isMissingModelColumnsError,
@@ -21,8 +26,14 @@ export const dynamic = "force-dynamic";
 
 export async function POST(request: NextRequest) {
   try {
+    const authFailLimit = await enforceApiKeyAuthAllowed(request);
+    if (!authFailLimit.allowed) {
+      return apiKeyAuthRateLimitResponse(authFailLimit.retryAfterSec);
+    }
+
     const authHeader = request.headers.get("authorization");
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
+      await recordFailedApiKeyAttempt(request);
       return NextResponse.json(
         { error: { message: "请提供 API Key", type: "auth_error" } },
         { status: 401 }
@@ -51,6 +62,7 @@ export async function POST(request: NextRequest) {
     const keyError = keyResult.error;
 
     if (keyError || !apiKey) {
+      await recordFailedApiKeyAttempt(request);
       return NextResponse.json(
         { error: { message: "无效的 API Key", type: "auth_error" } },
         { status: 401 }

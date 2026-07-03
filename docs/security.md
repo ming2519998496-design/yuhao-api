@@ -81,4 +81,17 @@ node scripts/check-dns-email-security.mjs yuhaoapi.com
 
 未执行 SQL 时限流降级为单实例内存计数（仍有一定防护，多实例下较弱）。
 
-后续可选：Cloudflare Turnstile（注册/登录）、Key 异常告警、管理员一键冻结。
+## 反爬与防滥用（2026-07 起）
+
+| 场景 | 机制 | 默认阈值 |
+|------|------|----------|
+| `/api/models` 模型目录 | IP 限流；爬虫 UA 更严 | 30/分钟、200/小时（爬虫 5/30） |
+| `/pricing` 价格页 | 需登录（DashboardShell） | — |
+| `/api/v1/*` 盗 Key 猜测 | 失败鉴权 IP 限流 | 10/分钟、60/小时 |
+| `/api/web/*`、`/api/chat/*` | 须本站 Origin；专用 Web 限流 | 20/用户/分钟、30/IP/分钟 |
+| `/chat` 脚本刷对话 | 上述 + 可选 Turnstile | 配置 `TURNSTILE_*` 后启用 |
+| 搜索引擎 | `robots.txt` 禁止 `/api/`、`/chat` 等 | `src/app/robots.ts` |
+
+环境变量：`CATALOG_RATE_LIMIT_*`、`WEB_CHAT_RATE_LIMIT_*`、`API_KEY_FAIL_RATE_LIMIT_*`、`NEXT_PUBLIC_TURNSTILE_SITE_KEY`、`TURNSTILE_SECRET_KEY`（见 `.env.example`）。
+
+**建议**：生产环境在 Cloudflare 控制台再开 Bot Fight Mode / WAF 规则，与上述应用层限流叠加效果更好。

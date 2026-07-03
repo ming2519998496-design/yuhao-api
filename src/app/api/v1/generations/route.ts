@@ -1,4 +1,9 @@
 import { authenticateApiKeyRequest } from "@/lib/api-key-auth";
+import {
+  apiKeyAuthRateLimitResponse,
+  enforceApiKeyAuthAllowed,
+  recordFailedApiKeyAttempt,
+} from "@/lib/anti-abuse";
 import { runGenerationRequest } from "@/lib/generations-handler";
 import { apiServerErrorResponse } from "@/lib/api-error";
 import { getClientIp } from "@/lib/client-ip";
@@ -21,6 +26,11 @@ type GenerationRequestBody = {
 
 export async function POST(request: NextRequest) {
   try {
+    const authFailLimit = await enforceApiKeyAuthAllowed(request);
+    if (!authFailLimit.allowed) {
+      return apiKeyAuthRateLimitResponse(authFailLimit.retryAfterSec);
+    }
+
     let body: GenerationRequestBody;
     try {
       body = await request.json();
@@ -41,7 +51,10 @@ export async function POST(request: NextRequest) {
       modelId,
       null
     );
-    if (!auth.ok) return auth.response;
+    if (!auth.ok) {
+      await recordFailedApiKeyAttempt(request);
+      return auth.response;
+    }
 
     const { apiKey, modelConfig } = auth;
 

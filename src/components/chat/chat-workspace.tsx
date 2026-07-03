@@ -4,6 +4,10 @@ import { ChatHistoryPanel } from "@/components/chat/chat-history-panel";
 import { ChatMessageContent } from "@/components/chat/chat-message-content";
 import { GenerationMediaPreview } from "@/components/generation/generation-media-preview";
 import {
+  isTurnstileClientEnabled,
+  TurnstileWidget,
+} from "@/components/security/turnstile-widget";
+import {
   filterModelsForKey,
   modeLabel,
   modePlaceholder,
@@ -109,6 +113,8 @@ export function ChatWorkspace() {
   const [sessionsLoading, setSessionsLoading] = useState(true);
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [historyNotice, setHistoryNotice] = useState("");
+  const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const turnstileRequired = isTurnstileClientEnabled();
 
   const abortRef = useRef<AbortController | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -395,6 +401,10 @@ export function ChatWorkspace() {
   async function handleSend() {
     const text = input.trim();
     if (!text || busy || !selectedKeyId || !model) return;
+    if (turnstileRequired && !turnstileToken) {
+      setBillingNote("请先完成下方人机验证");
+      return;
+    }
 
     const userMessage: UiMessage = {
       id: newMessageId(),
@@ -438,6 +448,7 @@ export function ChatWorkspace() {
         messages: history,
         stream: true,
         signal: controller.signal,
+        turnstileToken,
         onDelta: (delta) => {
           assistantContentRef.current += delta;
           setMessages((prev) =>
@@ -516,6 +527,7 @@ export function ChatWorkspace() {
       model,
       prompt: text,
       signal: controller.signal,
+      turnstileToken,
     });
 
     abortRef.current = null;
@@ -785,6 +797,15 @@ export function ChatWorkspace() {
             </p>
           )}
 
+          {turnstileRequired && (
+            <div className="mb-3">
+              <TurnstileWidget
+                onToken={setTurnstileToken}
+                className="min-h-[65px]"
+              />
+            </div>
+          )}
+
           <div className="flex gap-2">
             <textarea
               ref={textareaRef}
@@ -809,7 +830,12 @@ export function ChatWorkspace() {
               <button
                 type="button"
                 onClick={() => void handleSend()}
-                disabled={!input.trim() || !model || availableModels.length === 0}
+                disabled={
+                  !input.trim() ||
+                  !model ||
+                  availableModels.length === 0 ||
+                  (turnstileRequired && !turnstileToken)
+                }
                 className="inline-flex h-[52px] w-[52px] shrink-0 items-center justify-center rounded-xl bg-gradient-to-r from-accent to-accent-dark text-white transition-all hover:brightness-110 disabled:opacity-50"
                 title="发送"
               >

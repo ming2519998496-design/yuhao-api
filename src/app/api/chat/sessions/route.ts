@@ -3,15 +3,21 @@ import {
   listChatSessions,
 } from "@/lib/chat-history-db";
 import type { ChatMode } from "@/lib/chat-models";
+import { guardWebApiRequest } from "@/lib/anti-abuse";
 import { requireActiveUserResponse } from "@/lib/session-api";
 import { NextRequest, NextResponse } from "next/server";
 
 export const runtime = "nodejs";
 export const dynamic = "force-dynamic";
 
-export async function GET() {
+export async function GET(request: NextRequest) {
   const auth = await requireActiveUserResponse();
   if (auth.response) return auth.response;
+
+  const guard = await guardWebApiRequest(request, {
+    userId: auth.user.id,
+  });
+  if (guard) return guard;
 
   const result = await listChatSessions(auth.user.id);
   if ("error" in result) {
@@ -38,6 +44,13 @@ export async function POST(request: NextRequest) {
   if (mode !== "chat" && mode !== "image" && mode !== "video") {
     return NextResponse.json({ error: "无效的模式" }, { status: 400 });
   }
+
+  const guard = await guardWebApiRequest(request, {
+    userId: auth.user.id,
+    turnstileToken:
+      typeof body.turnstileToken === "string" ? body.turnstileToken : undefined,
+  });
+  if (guard) return guard;
 
   const result = await createChatSession(auth.user.id, {
     mode,

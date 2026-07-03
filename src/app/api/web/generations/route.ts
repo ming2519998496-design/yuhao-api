@@ -1,5 +1,6 @@
 import { authenticateUserKeyById } from "@/lib/api-key-auth";
 import { runGenerationRequest } from "@/lib/generations-handler";
+import { guardWebApiRequest } from "@/lib/anti-abuse";
 import { apiServerErrorResponse } from "@/lib/api-error";
 import { getClientIp } from "@/lib/client-ip";
 import {
@@ -19,6 +20,7 @@ type WebGenerationBody = {
   prompt?: string;
   size?: string;
   quality?: string;
+  turnstileToken?: string;
 };
 
 export async function POST(request: NextRequest) {
@@ -48,6 +50,12 @@ export async function POST(request: NextRequest) {
         { status: 400 }
       );
     }
+
+    const guard = await guardWebApiRequest(request, {
+      userId: session.user.id,
+      turnstileToken: body.turnstileToken,
+    });
+    if (guard) return guard;
 
     const auth = await authenticateUserKeyById(session.user.id, keyId, modelId);
     if (!auth.ok) return auth.response;

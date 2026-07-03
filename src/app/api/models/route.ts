@@ -4,10 +4,21 @@ import {
   resolveModelChargeYuan,
 } from "@/lib/models";
 import { getEffectiveModelCatalog } from "@/lib/model-pricing-store";
-import { NextResponse } from "next/server";
+import {
+  catalogRateLimitResponse,
+  enforcePublicCatalogAccess,
+} from "@/lib/anti-abuse";
+import { NextRequest, NextResponse } from "next/server";
+
+export const dynamic = "force-dynamic";
 
 /** 公开模型目录（按厂商分类，价格与扣费一致） */
-export async function GET() {
+export async function GET(request: NextRequest) {
+  const rateLimit = await enforcePublicCatalogAccess(request);
+  if (!rateLimit.allowed) {
+    return catalogRateLimitResponse(rateLimit.retryAfterSec);
+  }
+
   const groups = (await getEffectiveModelCatalog()).map((g) => ({
     category: {
       id: g.category.id,
@@ -35,5 +46,12 @@ export async function GET() {
     }),
   }));
 
-  return NextResponse.json({ groups });
+  return NextResponse.json(
+    { groups },
+    {
+      headers: {
+        "Cache-Control": "private, max-age=60, stale-while-revalidate=120",
+      },
+    }
+  );
 }

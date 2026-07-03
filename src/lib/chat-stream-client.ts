@@ -18,6 +18,7 @@ export type RequestChatCompletionOptions = {
   messages: ChatPayloadMessage[];
   stream?: boolean;
   signal?: AbortSignal;
+  turnstileToken?: string | null;
   onDelta: (delta: string) => void;
   onComplete: (billing?: ChatBillingInfo) => void;
   onError: (message: string) => void;
@@ -61,6 +62,7 @@ export async function requestChatCompletion(
         model: options.model,
         messages: options.messages,
         stream: useStream,
+        turnstileToken: options.turnstileToken,
       }),
       signal: options.signal,
     });
@@ -140,6 +142,7 @@ export async function requestGeneration(options: {
   model: string;
   prompt: string;
   signal?: AbortSignal;
+  turnstileToken?: string | null;
 }): Promise<
   | { ok: true; data: unknown; billing?: ChatBillingInfo }
   | { ok: false; message: string }
@@ -154,6 +157,7 @@ export async function requestGeneration(options: {
         keyId: options.keyId,
         model: options.model,
         prompt: options.prompt,
+        turnstileToken: options.turnstileToken,
       }),
       signal: options.signal,
     });

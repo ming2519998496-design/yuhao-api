@@ -20,6 +20,7 @@ import {
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
 import { useEffect, useMemo, useState } from "react";
+import { AnnouncementPopup } from "@/components/announcements/announcement-popup";
 import { SiteLogo } from "@/components/brand/site-logo";
 import { createClient } from "@/lib/supabase";
 import { cn } from "@/lib/utils";
@@ -187,6 +188,7 @@ export function DashboardShell({
 
   return (
     <div className="relative min-h-screen bg-background">
+      <AnnouncementPopup userId={user?.id} enabled={!loading} />
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-40" />
 
       <div className="relative flex min-h-screen">

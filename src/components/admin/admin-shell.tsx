@@ -14,6 +14,7 @@ import {
   Users,
   X,
 } from "lucide-react";
+import { AnnouncementPopup } from "@/components/announcements/announcement-popup";
 import { SiteLogo } from "@/components/brand/site-logo";
 import Link from "next/link";
 import { usePathname, useRouter } from "next/navigation";
@@ -49,6 +50,7 @@ export function AdminShell({
   const [loading, setLoading] = useState(true);
   const [denied, setDenied] = useState(false);
   const [email, setEmail] = useState("");
+  const [userId, setUserId] = useState<string | null>(null);
   const [mobileOpen, setMobileOpen] = useState(false);
 
   useEffect(() => {
@@ -61,6 +63,7 @@ export function AdminShell({
         return;
       }
       setEmail(user.email ?? "");
+      setUserId(user.id);
       await fetch("/api/auth/sync-profile", { method: "POST" });
       const res = await fetch("/api/admin/stats");
       if (res.status === 403) {
@@ -168,6 +171,7 @@ export function AdminShell({
 
   return (
     <div className="relative min-h-screen bg-background">
+      <AnnouncementPopup userId={userId} enabled={!loading && !denied} />
       <div className="pointer-events-none absolute inset-0 grid-bg opacity-30" />
       <div className="relative flex min-h-screen">
         <aside className="hidden w-64 shrink-0 flex-col border-r border-border bg-surface/80 p-5 lg:flex">

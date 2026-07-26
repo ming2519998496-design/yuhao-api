@@ -82,9 +82,9 @@ const TIER_LABELS = officialData.tierLabels as Record<PricingTierId, string>;
 const OFFICIAL = officialData.models as Record<string, OfficialSpec>;
 
 const TIER_SUMMARY: Record<PricingTierId, string> = {
-  economy: "DeepSeek Flash、Gemini Lite",
-  standard: "GPT-4o Mini、Gemini Flash",
-  flagship: "GPT-4o、Gemini Pro",
+  economy: "DeepSeek V4 Flash、Gemini Flash-Lite",
+  standard: "GPT-5.6 Luna、Gemini 3.6 Flash",
+  flagship: "GPT-5.6 Sol/Terra、Gemini 3.1 Pro",
   image: "图像与视频生成",
 };
 
@@ -310,10 +310,10 @@ function exampleLines(
 }
 
 const FEATURED_IDS = [
-  "gpt-4o-mini",
-  "gemini-2.5-flash",
+  "gpt-5.6-luna",
+  "gemini-3.6-flash",
   "deepseek-v4-flash",
-  "gpt-4o",
+  "gpt-5.6-terra",
 ] as const;
 
 export function buildFeaturedExamples(

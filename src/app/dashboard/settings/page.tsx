@@ -10,10 +10,16 @@ import {
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { isOtpComplete, normalizeOtpInput } from "@/lib/otp";
 import { createClient } from "@/lib/supabase";
+import { BindEmailSection } from "@/components/auth/bind-email-section";
+import { BindPhoneSection } from "@/components/auth/bind-phone-section";
 import { ChangePasswordSection } from "@/components/auth/change-password-section";
+import { isPhoneAuthEnabled } from "@/lib/phone-auth-feature";
+import { maskPhone } from "@/lib/phone";
 import { Mail, Shield } from "lucide-react";
 import { useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
+
+const phoneAuthOn = isPhoneAuthEnabled();
 
 export default function AccountSettingsPage() {
   const supabase = useMemo(() => createClient(), []);
@@ -36,6 +42,11 @@ export default function AccountSettingsPage() {
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => setUser(data.user));
   }, [supabase]);
+
+  async function refreshUser() {
+    const { data } = await supabase.auth.getUser();
+    setUser(data.user);
+  }
 
   async function sendCurrentEmailOtp(): Promise<boolean> {
     setCurrentOtpErr("");
@@ -155,7 +166,11 @@ export default function AccountSettingsPage() {
   return (
     <DashboardShell
       title="账户设置"
-      description="修改登录密码与注册邮箱；换绑前须验证当前邮箱"
+      description={
+        phoneAuthOn
+          ? "修改登录密码；绑定邮箱与手机号后，可使用任一方式与同一密码登录"
+          : "修改登录密码与注册邮箱；换绑前须验证当前邮箱"
+      }
     >
       <div className="mx-auto max-w-2xl space-y-6">
         <div className="rounded-2xl border border-border bg-surface-elevated p-5 shadow-sm">
@@ -169,12 +184,27 @@ export default function AccountSettingsPage() {
               {user?.email ?? "未绑定"}
             </span>
           </p>
+          {phoneAuthOn && (
+            <p className="mt-1 text-sm">
+              手机：
+              <span className="font-medium text-foreground">
+                {user?.phone ? maskPhone(user.phone) : "未绑定"}
+              </span>
+            </p>
+          )}
         </div>
 
         <ChangePasswordSection
           email={user?.email}
-          successMessage="登录密码已修改成功"
+          phone={phoneAuthOn ? user?.phone : null}
         />
+
+        {phoneAuthOn && (
+          <>
+            <BindEmailSection email={user?.email} onBound={refreshUser} />
+            <BindPhoneSection phone={user?.phone} onBound={refreshUser} />
+          </>
+        )}
 
         <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
           <h2 className="flex items-center gap-2 font-semibold">

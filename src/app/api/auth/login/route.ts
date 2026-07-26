@@ -10,6 +10,8 @@ import {
   syncAdminRole,
 } from "@/lib/auth-admin";
 import { getAdminEmailSet } from "@/lib/admin-policy";
+import { parseAuthIdentifier } from "@/lib/auth-identifier";
+import { isPhoneAuthEnabled } from "@/lib/phone-auth-feature";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { bindReferrer, ensureAffCode } from "@/lib/referral";
 import { createAdminClient } from "@/lib/supabase-admin";
@@ -18,17 +20,34 @@ import { NextRequest, NextResponse } from "next/server";
 
 /** 服务端登录：浏览器只请求本站，由 Next.js 连接 Supabase（避免浏览器 NetworkError） */
 export async function POST(request: NextRequest) {
-  let body: { email?: string; password?: string; aff?: string };
+  let body: {
+    identifier?: string;
+    email?: string;
+    password?: string;
+    aff?: string;
+  };
   try {
     body = await request.json();
   } catch {
     return NextResponse.json({ error: "无效请求" }, { status: 400 });
   }
 
-  const email = body.email?.trim();
+  const rawIdentifier = (body.identifier ?? body.email)?.trim() ?? "";
   const password = body.password;
-  if (!email || !password) {
-    return NextResponse.json({ error: "请填写邮箱和密码" }, { status: 400 });
+  const parsed = parseAuthIdentifier(rawIdentifier);
+
+  if (!parsed || !password) {
+    return NextResponse.json(
+      { error: "请填写有效的邮箱或手机号，以及密码" },
+      { status: 400 }
+    );
+  }
+
+  if (parsed.kind === "phone" && !isPhoneAuthEnabled()) {
+    return NextResponse.json(
+      { error: "手机号登录暂未开放，请使用邮箱登录" },
+      { status: 403 }
+    );
   }
 
   if (hasTooManyAdminEmailsInEnv()) {
@@ -40,10 +59,12 @@ export async function POST(request: NextRequest) {
 
   try {
     const supabase = await createServerSupabase();
-    const { data, error } = await supabase.auth.signInWithPassword({
-      email,
-      password,
-    });
+    const credentials =
+      parsed.kind === "email"
+        ? { email: parsed.email, password }
+        : { phone: parsed.phone, password };
+
+    const { data, error } = await supabase.auth.signInWithPassword(credentials);
 
     if (error) {
       return NextResponse.json(

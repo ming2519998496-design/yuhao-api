@@ -4,14 +4,17 @@ import { AuthCard } from "@/components/auth/auth-card";
 import { errorBoxClass, inputClass } from "@/components/auth/otp-field";
 import { ACCOUNT_FROZEN_MESSAGE } from "@/lib/account-frozen-messages";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
+import { isPhoneAuthEnabled } from "@/lib/phone-auth-feature";
 import Link from "next/link";
 import { Suspense, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 
+const phoneAuthOn = isPhoneAuthEnabled();
+
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [email, setEmail] = useState("");
+  const [identifier, setIdentifier] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -28,7 +31,11 @@ function LoginForm() {
       const res = await fetch("/api/auth/login", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ email, password }),
+        body: JSON.stringify(
+          phoneAuthOn
+            ? { identifier, password }
+            : { email: identifier, password }
+        ),
       });
       const data = await res.json().catch(() => ({}));
 
@@ -56,7 +63,11 @@ function LoginForm() {
   return (
     <AuthCard
       title="登录账户"
-      subtitle="使用邮箱和密码登录"
+      subtitle={
+        phoneAuthOn
+          ? "使用邮箱或手机号与密码登录（同一账户共用一套密码）"
+          : "使用邮箱和密码登录"
+      }
       footer={
         <p className="mt-6 text-center text-sm text-muted">
           还没有账户？{" "}
@@ -80,12 +91,18 @@ function LoginForm() {
 
       <form className="mt-6 space-y-4" onSubmit={handleLogin}>
         <div>
-          <label className="mb-1.5 block text-sm text-muted">邮箱</label>
+          <label className="mb-1.5 block text-sm text-muted">
+            {phoneAuthOn ? "邮箱或手机号" : "邮箱"}
+          </label>
           <input
-            type="email"
+            type={phoneAuthOn ? "text" : "email"}
             className={inputClass}
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
+            placeholder={
+              phoneAuthOn ? "name@example.com 或 13800138000" : undefined
+            }
+            value={identifier}
+            onChange={(e) => setIdentifier(e.target.value)}
+            autoComplete="username"
             required
           />
         </div>
@@ -104,6 +121,7 @@ function LoginForm() {
             className={inputClass}
             value={password}
             onChange={(e) => setPassword(e.target.value)}
+            autoComplete="current-password"
             required
           />
         </div>

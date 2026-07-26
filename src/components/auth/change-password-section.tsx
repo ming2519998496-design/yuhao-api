@@ -8,21 +8,27 @@ import {
 } from "@/components/auth/otp-field";
 import { getAuthErrorMessage } from "@/lib/auth-errors";
 import { isOtpComplete, normalizeOtpInput } from "@/lib/otp";
+import { isPhoneAuthEnabled } from "@/lib/phone-auth-feature";
+import { maskPhone } from "@/lib/phone";
 import { createClient } from "@/lib/supabase";
 import { KeyRound } from "lucide-react";
 import { useMemo, useState } from "react";
 
 type ChangePasswordSectionProps = {
-  email: string | undefined;
+  email: string | undefined | null;
+  phone?: string | null;
   /** 成功提示文案，默认「登录密码已修改成功」 */
   successMessage?: string;
 };
 
 export function ChangePasswordSection({
   email,
+  phone,
   successMessage = "登录密码已修改成功",
 }: ChangePasswordSectionProps) {
   const supabase = useMemo(() => createClient(), []);
+  const phoneAuthOn = isPhoneAuthEnabled();
+  const verifyChannel = email ? "email" : phoneAuthOn && phone ? "phone" : null;
   const [otp, setOtp] = useState("");
   const [password, setPassword] = useState("");
   const [confirmPassword, setConfirmPassword] = useState("");
@@ -30,29 +36,47 @@ export function ChangePasswordSection({
   const [msg, setMsg] = useState("");
   const [loading, setLoading] = useState(false);
 
-  async function sendEmailOtp(): Promise<boolean> {
+  async function sendOtp(): Promise<boolean> {
     setErr("");
     setMsg("");
-    if (!email) {
-      setErr("请先绑定邮箱后再修改密码");
-      return false;
+
+    if (verifyChannel === "email" && email) {
+      const res = await fetch("/api/auth/password-otp/send", { method: "POST" });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        email?: string;
+        message?: string;
+        forwardedTo?: string;
+      };
+      if (!res.ok) {
+        setErr(data.error ?? "发送验证码失败，请稍后重试");
+        return false;
+      }
+      setMsg(
+        data.message ??
+          `验证码已发送至 ${data.email ?? email}，请查收邮件（含垃圾箱）`
+      );
+      return true;
     }
-    const res = await fetch("/api/auth/password-otp/send", { method: "POST" });
-    const data = (await res.json().catch(() => ({}))) as {
-      error?: string;
-      email?: string;
-      message?: string;
-      forwardedTo?: string;
-    };
-    if (!res.ok) {
-      setErr(data.error ?? "发送验证码失败，请稍后重试");
-      return false;
+
+    if (verifyChannel === "phone" && phone) {
+      const res = await fetch("/api/auth/password-otp/send-phone", {
+        method: "POST",
+      });
+      const data = (await res.json().catch(() => ({}))) as {
+        error?: string;
+        message?: string;
+      };
+      if (!res.ok) {
+        setErr(data.error ?? "发送验证码失败，请稍后重试");
+        return false;
+      }
+      setMsg(data.message ?? `验证码已发送至 ${maskPhone(phone)}`);
+      return true;
     }
-    setMsg(
-      data.message ??
-        `验证码已发送至 ${data.email ?? email}，请查收邮件（含垃圾箱）`
-    );
-    return true;
+
+    setErr("请先绑定邮箱或手机号后再修改密码");
+    return false;
   }
 
   async function handleSubmit(e: React.FormEvent) {
@@ -60,12 +84,16 @@ export function ChangePasswordSection({
     setErr("");
     setMsg("");
 
-    if (!email) {
-      setErr("请先绑定邮箱后再修改密码");
+    if (!verifyChannel) {
+      setErr("请先绑定邮箱或手机号后再修改密码");
       return;
     }
     if (!isOtpComplete(otp)) {
-      setErr("请输入完整的邮箱验证码");
+      setErr(
+        verifyChannel === "email"
+          ? "请输入完整的邮箱验证码"
+          : "请输入完整的短信验证码"
+      );
       return;
     }
     if (password.length < 8) {
@@ -79,11 +107,18 @@ export function ChangePasswordSection({
 
     setLoading(true);
 
-    const { error: verifyError } = await supabase.auth.verifyOtp({
-      email,
-      token: otp,
-      type: "recovery",
-    });
+    const { error: verifyError } =
+      verifyChannel === "email" && email
+        ? await supabase.auth.verifyOtp({
+            email,
+            token: otp,
+            type: "recovery",
+          })
+        : await supabase.auth.verifyOtp({
+            phone: phone!,
+            token: otp,
+            type: "sms",
+          });
 
     if (verifyError) {
       setErr(getAuthErrorMessage(verifyError));
@@ -108,7 +143,7 @@ export function ChangePasswordSection({
     setConfirmPassword("");
   }
 
-  if (!email) {
+  if (!verifyChannel) {
     return (
       <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
         <h2 className="flex items-center gap-2 font-semibold">
@@ -116,15 +151,20 @@ export function ChangePasswordSection({
           修改登录密码
         </h2>
         <p className="mt-2 text-sm text-muted">
-          当前账户未绑定邮箱，请先在下方完成邮箱绑定，或使用
+          请先在下方绑定邮箱或手机号，或使用
           <a href="/forgot-password" className="mx-1 text-accent-dark hover:underline">
             找回密码
           </a>
-          通过注册邮箱重置。
+          重置。
         </p>
       </div>
     );
   }
+
+  const channelLabel =
+    verifyChannel === "email"
+      ? `邮箱 ${email}`
+      : `手机 ${maskPhone(phone!)}`;
 
   return (
     <div className="rounded-2xl border border-border bg-surface-elevated p-6 shadow-sm">
@@ -133,7 +173,7 @@ export function ChangePasswordSection({
         修改登录密码
       </h2>
       <p className="mt-1 text-xs text-muted">
-        将向当前绑定邮箱 <strong>{email}</strong> 发送验证码，验证通过后方可设置新密码
+        将向 <strong>{channelLabel}</strong> 发送验证码，验证通过后方可设置新密码
       </p>
       {err && <div className={`${errorBoxClass} mt-3`}>{err}</div>}
       {msg && <div className={`${successBoxClass} mt-3`}>{msg}</div>}
@@ -141,12 +181,12 @@ export function ChangePasswordSection({
         <div className="flex gap-2">
           <input
             className={inputClass}
-            placeholder="邮箱验证码"
+            placeholder={verifyChannel === "email" ? "邮箱验证码" : "短信验证码"}
             value={otp}
             onChange={(e) => setOtp(normalizeOtpInput(e.target.value))}
             autoComplete="one-time-code"
           />
-          <OtpField onSend={sendEmailOtp} />
+          <OtpField onSend={sendOtp} />
         </div>
         <input
           type="password"

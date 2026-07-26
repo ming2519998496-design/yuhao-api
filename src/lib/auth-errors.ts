@@ -44,7 +44,7 @@ export function formatAuthError(message: string): string {
 
   const m = trimmed.toLowerCase();
   if (m.includes("invalid login credentials")) {
-    return "邮箱或密码错误，请重试";
+    return "账号或密码错误，请重试";
   }
   if (m.includes("signups not allowed for otp")) {
     return "当前项目未开启 OTP 注册/登录。绑定手机请使用「获取验证码」；若仍失败，请在 Supabase → Authentication → Providers 中开启 Phone，并配置短信服务。";
@@ -63,7 +63,10 @@ export function formatAuthError(message: string): string {
     m.includes("already registered") ||
     m.includes("user already registered")
   ) {
-    return "该邮箱已注册，请直接登录";
+    return "该邮箱或手机号已注册，请直接登录";
+  }
+  if (m.includes("phone") && m.includes("already")) {
+    return "该手机号已注册，请直接登录";
   }
   if (m.includes("rate limit")) {
     return "操作过于频繁，请稍后再试。";

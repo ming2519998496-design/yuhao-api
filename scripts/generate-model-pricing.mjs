@@ -195,9 +195,11 @@ console.log(`已更新 src/lib/models.ts 默认价（${Object.keys(pricingMap).l
 console.log("\n主力模型平台价：");
 for (const key of [
   "deepseek-v4-flash",
-  "gpt-4o-mini",
-  "gemini-2.5-flash",
-  "gpt-4o",
+  "gpt-5.6-luna",
+  "gpt-5.6-terra",
+  "gpt-5.6-sol",
+  "gemini-3.6-flash",
+  "gemini-3.5-flash-lite",
   "deepseek-v4-pro",
 ]) {
   const p = pricingMap[key];

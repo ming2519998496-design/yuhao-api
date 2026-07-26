@@ -63,11 +63,9 @@ export function mergeAnnouncements(raw: unknown): AnnouncementsPayload {
   return { items: sortAnnouncements(items) };
 }
 
+/** 按发布时间降序（最新在前）；置顶仅作展示标记，不影响排序 */
 export function sortAnnouncements(items: Announcement[]): Announcement[] {
-  return [...items].sort((a, b) => {
-    if (Boolean(a.pinned) !== Boolean(b.pinned)) {
-      return a.pinned ? -1 : 1;
-    }
-    return Date.parse(b.publishedAt) - Date.parse(a.publishedAt);
-  });
+  return [...items].sort(
+    (a, b) => Date.parse(b.publishedAt) - Date.parse(a.publishedAt)
+  );
 }

@@ -1,6 +1,7 @@
 "use client";
 
 import type { Announcement } from "@/lib/announcements-settings";
+import { sortAnnouncements } from "@/lib/announcements-settings";
 import {
   getSeenAnnouncementIds,
   markAnnouncementsSeen,
@@ -50,7 +51,9 @@ export function AnnouncementPopup({
 
         const items = (data.items ?? []) as Announcement[];
         const seen = getSeenAnnouncementIds(userId!);
-        const fresh = items.filter((item) => !seen.has(item.id));
+        const fresh = sortAnnouncements(
+          items.filter((item) => !seen.has(item.id))
+        );
 
         if (fresh.length === 0) return;
         setUnread(fresh);

@@ -24,8 +24,8 @@ export default function SupportPage() {
             <Image
               src="/support/wechat-group-qr.png"
               alt="遇好API 用户交流群微信二维码"
-              width={1190}
-              height={662}
+              width={1024}
+              height={569}
               className="h-auto w-full"
               priority
             />

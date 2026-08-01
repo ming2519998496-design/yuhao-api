@@ -43,7 +43,13 @@ export async function runChatCompletions(
 ): Promise<Response> {
   try {
     const admin = createAdminClient();
-    const { model: requestedModel, messages, ...rest } = body;
+    const {
+      model: requestedModel,
+      messages,
+      webSearch: webSearchRaw,
+      ...rest
+    } = body;
+    const webSearch = webSearchRaw === true;
     const allowedCategories = resolveAllowedCategoryIds(
       apiKey.allowed_category_ids as string[] | undefined
     );
@@ -123,6 +129,20 @@ export async function runChatCompletions(
 
     const provider = modelConfig.provider;
 
+    if (webSearch && provider !== "openai" && provider !== "google") {
+      return NextResponse.json(
+        {
+          error: {
+            message:
+              "当前模型不支持原生联网搜索，请改用 OpenAI 或 Gemini 模型，或关闭联网搜索。",
+            type: "invalid_request_error",
+            code: "web_search_not_supported",
+          },
+        },
+        { status: 400 }
+      );
+    }
+
     if (provider === "anthropic") {
       return handleAnthropicProxy(
         modelConfig,
@@ -153,7 +173,19 @@ export async function runChatCompletions(
         pricing,
         apiKeyRecord,
         admin,
-        apiKeyValue
+        apiKeyValue,
+        webSearch
+      );
+    }
+
+    if (webSearch && provider === "openai") {
+      return handleOpenAIWebSearchProxy(
+        modelConfig,
+        messages,
+        apiKeyValue,
+        pricing,
+        apiKeyRecord,
+        admin
       );
     }
 
@@ -335,6 +367,247 @@ async function handleOpenAIProxy(
   return respondWithBilling(result);
 }
 
+/** OpenAI Responses API + web_search，结果转为 chat.completion JSON（非流式） */
+async function handleOpenAIWebSearchProxy(
+  modelConfig: {
+    id: string;
+    provider: string;
+    baseUrl: string;
+    upstreamModelId?: string;
+  },
+  messages: unknown,
+  apiKeyValue: string,
+  pricing: ModelPricing,
+  apiKeyRecord: ApiKeyRecord,
+  admin: ReturnType<typeof createAdminClient>
+) {
+  const reserveContext = buildBillingReserveContext({
+    messages,
+    max_tokens: DEFAULT_MAX_COMPLETION_TOKENS,
+  });
+  const upstreamBaseUrl = modelConfig.baseUrl.replace(/\/$/, "");
+  const upstreamModel = resolveOpenAiUpstreamModelForRequest(
+    modelConfig.id,
+    upstreamBaseUrl,
+    modelConfig.upstreamModelId
+  );
+  const viaGateway = isVercelAiGatewayBaseUrl(upstreamBaseUrl);
+  const upstreamLabel = viaGateway ? "AI Gateway" : "OpenAI";
+  const url = `${upstreamBaseUrl}/responses`;
+
+  const result = await executeWithBilling(
+    admin,
+    apiKeyRecord,
+    modelConfig.id,
+    pricing,
+    reserveContext,
+    async () => {
+      let response: Response;
+      try {
+        response = await upstreamFetch(url, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${apiKeyValue}`,
+          },
+          body: JSON.stringify({
+            model: upstreamModel,
+            input: messagesToResponsesInput(
+              messages as Array<{ role?: string; content?: unknown }> | undefined
+            ),
+            tools: [{ type: "web_search" }],
+          }),
+        });
+      } catch (e) {
+        const msg =
+          e instanceof Error ? e.message : `无法连接 ${upstreamLabel} 上游`;
+        const hint = viaGateway
+          ? "请检查 AI Gateway Key 是否有效，或 Vercel 项目是否已开通 AI Gateway"
+          : "请检查服务器能否访问 api.openai.com，或上游 Key 是否有效";
+        return {
+          ok: false,
+          status: 502,
+          data: {
+            error: {
+              message: `${upstreamLabel} 联网搜索请求失败：${msg}（${hint}）`,
+              type: "upstream_error",
+            },
+          },
+        };
+      }
+
+      const rawText = await response.text();
+      let data: Record<string, unknown> = {};
+      if (rawText) {
+        try {
+          data = JSON.parse(rawText) as Record<string, unknown>;
+        } catch {
+          return {
+            ok: false,
+            status: response.status || 502,
+            data: {
+              error: {
+                message: `${upstreamLabel} 返回异常响应（HTTP ${response.status}）`,
+                type: "upstream_error",
+              },
+            },
+          };
+        }
+      }
+
+      if (!response.ok) {
+        const err = data.error as { message?: string } | undefined;
+        return {
+          ok: false,
+          status: response.status,
+          data: {
+            error: {
+              message: err?.message || `${upstreamLabel} 联网搜索失败`,
+              type: "upstream_error",
+            },
+          },
+        };
+      }
+
+      const openaiLike = convertResponsesToChatCompletion(data, modelConfig.id);
+      return {
+        ok: true,
+        status: 200,
+        data: openaiLike,
+        usage: openaiLike.usage,
+      };
+    }
+  );
+
+  return respondWithBilling(result);
+}
+
+function messagesToResponsesInput(
+  messages: Array<{ role?: string; content?: unknown }> | undefined
+): Array<{ role: string; content: string }> {
+  if (!Array.isArray(messages)) return [];
+  return messages
+    .map((msg) => {
+      const role =
+        msg.role === "assistant" || msg.role === "system" || msg.role === "user"
+          ? msg.role
+          : "user";
+      const content =
+        typeof msg.content === "string"
+          ? msg.content
+          : msg.content == null
+            ? ""
+            : JSON.stringify(msg.content);
+      return { role, content };
+    })
+    .filter((msg) => msg.content.trim().length > 0);
+}
+
+function convertResponsesToChatCompletion(
+  responsesData: Record<string, unknown>,
+  modelId: string
+) {
+  const { text, citations } = extractResponsesTextAndCitations(responsesData);
+  const content = appendSourceLinks(text, citations);
+  const usageRaw = (responsesData.usage ?? {}) as Record<string, unknown>;
+  const usage = normalizeUsage(usageRaw);
+
+  return {
+    id: `chatcmpl-${crypto.randomUUID()}`,
+    object: "chat.completion",
+    created: Math.floor(Date.now() / 1000),
+    model: modelId,
+    choices: [
+      {
+        index: 0,
+        message: {
+          role: "assistant",
+          content,
+        },
+        finish_reason: "stop",
+      },
+    ],
+    usage: {
+      prompt_tokens: usage.prompt_tokens,
+      completion_tokens: usage.completion_tokens,
+      total_tokens: usage.prompt_tokens + usage.completion_tokens,
+    },
+  };
+}
+
+function extractResponsesTextAndCitations(data: Record<string, unknown>): {
+  text: string;
+  citations: Array<{ title: string; url: string }>;
+} {
+  const citations: Array<{ title: string; url: string }> = [];
+  const seen = new Set<string>();
+
+  const pushCitation = (title: string, url: string) => {
+    const key = url.trim();
+    if (!key || seen.has(key)) return;
+    seen.add(key);
+    citations.push({ title: title.trim() || key, url: key });
+  };
+
+  if (typeof data.output_text === "string" && data.output_text.trim()) {
+    // Still walk output for citations
+  }
+
+  const parts: string[] = [];
+  const output = data.output;
+  if (Array.isArray(output)) {
+    for (const item of output) {
+      if (!item || typeof item !== "object") continue;
+      const entry = item as {
+        type?: string;
+        content?: Array<{
+          type?: string;
+          text?: string;
+          annotations?: Array<{
+            type?: string;
+            url?: string;
+            title?: string;
+          }>;
+        }>;
+      };
+      if (entry.type !== "message" || !Array.isArray(entry.content)) continue;
+      for (const part of entry.content) {
+        if (part?.type === "output_text" && typeof part.text === "string") {
+          parts.push(part.text);
+        } else if (typeof part?.text === "string") {
+          parts.push(part.text);
+        }
+        if (Array.isArray(part?.annotations)) {
+          for (const ann of part.annotations) {
+            if (ann?.type === "url_citation" && typeof ann.url === "string") {
+              pushCitation(
+                typeof ann.title === "string" ? ann.title : ann.url,
+                ann.url
+              );
+            }
+          }
+        }
+      }
+    }
+  }
+
+  const text =
+    parts.join("\n").trim() ||
+    (typeof data.output_text === "string" ? data.output_text.trim() : "");
+
+  return { text, citations };
+}
+
+function appendSourceLinks(
+  text: string,
+  sources: Array<{ title: string; url: string }>
+): string {
+  if (sources.length === 0) return text;
+  const lines = sources.map((s) => `- [${s.title}](${s.url})`);
+  const block = `参考来源：\n${lines.join("\n")}`;
+  return text ? `${text}\n\n${block}` : block;
+}
+
 // ================= Anthropic / Claude =================
 async function handleAnthropicProxy(
   modelConfig: { id: string; baseUrl: string },
@@ -410,7 +683,8 @@ async function handleGeminiProxy(
   pricing: ModelPricing,
   apiKeyRecord: ApiKeyRecord,
   admin: ReturnType<typeof createAdminClient>,
-  apiKeyValue: string
+  apiKeyValue: string,
+  webSearch = false
 ) {
   const reserveContext = buildBillingReserveContext({
     messages,
@@ -430,18 +704,24 @@ async function handleGeminiProxy(
 
       const url = `${modelConfig.baseUrl}/models/${modelConfig.id}:generateContent?key=${apiKeyValue}`;
 
+      const geminiBody: Record<string, unknown> = {
+        contents: geminiContents,
+        generationConfig: {
+          temperature: 0.7,
+          maxOutputTokens: reserveContext.maxCompletionTokens,
+        },
+      };
+      if (webSearch) {
+        // 仅平台注入 google_search，不接受客户端任意 tools
+        geminiBody.tools = [{ google_search: {} }];
+      }
+
       let response: Response;
       try {
         response = await upstreamFetch(url, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: geminiContents,
-            generationConfig: {
-              temperature: 0.7,
-              maxOutputTokens: reserveContext.maxCompletionTokens,
-            },
-          }),
+          body: JSON.stringify(geminiBody),
         });
       } catch (e) {
         const msg = e instanceof Error ? e.message : "无法连接 Google 上游";
@@ -492,7 +772,8 @@ async function handleGeminiProxy(
 
       const openaiLike = convertGeminiToOpenAI(
         data as Parameters<typeof convertGeminiToOpenAI>[0],
-        modelConfig.id
+        modelConfig.id,
+        webSearch
       );
 
       return {
@@ -526,19 +807,55 @@ function convertMessagesToGemini(
   });
 }
 
+function extractGeminiGroundingSources(geminiResponse: {
+  candidates?: Array<{
+    groundingMetadata?: {
+      groundingChunks?: Array<{
+        web?: { uri?: string; title?: string };
+      }>;
+    };
+  }>;
+}): Array<{ title: string; url: string }> {
+  const chunks =
+    geminiResponse?.candidates?.[0]?.groundingMetadata?.groundingChunks ?? [];
+  const sources: Array<{ title: string; url: string }> = [];
+  const seen = new Set<string>();
+  for (const chunk of chunks) {
+    const uri = chunk?.web?.uri?.trim();
+    if (!uri || seen.has(uri)) continue;
+    seen.add(uri);
+    sources.push({
+      title: chunk.web?.title?.trim() || uri,
+      url: uri,
+    });
+  }
+  return sources;
+}
+
 function convertGeminiToOpenAI(
   geminiResponse: {
-    candidates?: Array<{ content?: { parts?: Array<{ text?: string }> } }>;
+    candidates?: Array<{
+      content?: { parts?: Array<{ text?: string }> };
+      groundingMetadata?: {
+        groundingChunks?: Array<{
+          web?: { uri?: string; title?: string };
+        }>;
+      };
+    }>;
     usageMetadata?: {
       promptTokenCount?: number;
       candidatesTokenCount?: number;
       totalTokenCount?: number;
     };
   },
-  modelId: string
+  modelId: string,
+  appendSources = false
 ) {
-  const text =
+  let text =
     geminiResponse?.candidates?.[0]?.content?.parts?.[0]?.text || "";
+  if (appendSources) {
+    text = appendSourceLinks(text, extractGeminiGroundingSources(geminiResponse));
+  }
   const promptTokens = geminiResponse?.usageMetadata?.promptTokenCount || 0;
   const completionTokens =
     geminiResponse?.usageMetadata?.candidatesTokenCount || 0;

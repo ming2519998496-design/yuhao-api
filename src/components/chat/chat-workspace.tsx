@@ -12,6 +12,7 @@ import {
   modeLabel,
   modePlaceholder,
   pickDefaultModel,
+  supportsNativeWebSearch,
   type CatalogGroup,
   type CatalogModel,
   type ChatMode,
@@ -44,6 +45,7 @@ import {
 } from "@/lib/chat-history-client";
 import { cn } from "@/lib/utils";
 import {
+  Globe,
   ImageIcon,
   Loader2,
   MessageSquare,
@@ -114,6 +116,7 @@ export function ChatWorkspace() {
   const [loadingSessionId, setLoadingSessionId] = useState<string | null>(null);
   const [historyNotice, setHistoryNotice] = useState("");
   const [turnstileToken, setTurnstileToken] = useState<string | null>(null);
+  const [webSearch, setWebSearch] = useState(false);
   const turnstileRequired = isTurnstileClientEnabled();
 
   const abortRef = useRef<AbortController | null>(null);
@@ -144,6 +147,10 @@ export function ChatWorkspace() {
   const selectedModelMeta = useMemo(
     () => availableModels.find((m) => m.id === model) ?? null,
     [availableModels, model]
+  );
+
+  const webSearchSupported = supportsNativeWebSearch(
+    selectedModelMeta?.provider
   );
 
   const refreshKeys = useCallback(async () => {
@@ -442,11 +449,14 @@ export function ChatWorkspace() {
       abortRef.current = controller;
       assistantContentRef.current = "";
 
+      const useWebSearch = webSearch && webSearchSupported;
+
       await requestChatCompletion({
         keyId: selectedKeyId,
         model,
         messages: history,
-        stream: true,
+        stream: !useWebSearch,
+        webSearch: useWebSearch,
         signal: controller.signal,
         turnstileToken,
         onDelta: (delta) => {
@@ -690,6 +700,36 @@ export function ChatWorkspace() {
             </>
           )}
         </div>
+
+        {mode === "chat" && (
+          <div className="rounded-xl border border-border bg-surface-elevated/60 p-4">
+            <label
+              className={cn(
+                "flex items-start gap-3",
+                webSearchSupported ? "cursor-pointer" : "cursor-not-allowed opacity-60"
+              )}
+            >
+              <input
+                type="checkbox"
+                checked={webSearch && webSearchSupported}
+                disabled={!webSearchSupported}
+                onChange={(e) => setWebSearch(e.target.checked)}
+                className="mt-0.5 h-4 w-4 shrink-0 rounded border-border text-accent focus:ring-accent/50"
+              />
+              <span className="min-w-0">
+                <span className="flex items-center gap-1.5 text-sm font-medium text-foreground">
+                  <Globe className="h-3.5 w-3.5 text-accent" />
+                  联网搜索
+                </span>
+                <span className="mt-1 block text-xs text-muted">
+                  {webSearchSupported
+                    ? "开启后可检索实时网页（OpenAI / Gemini）；可能增加上游搜索费用"
+                    : "该厂商暂不支持原生联网"}
+                </span>
+              </span>
+            </label>
+          </div>
+        )}
 
         <button
           type="button"

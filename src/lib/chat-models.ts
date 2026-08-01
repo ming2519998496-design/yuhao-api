@@ -8,12 +8,18 @@ export type CatalogGroup = {
 export type CatalogModel = {
   id: string;
   name: string;
+  provider?: string;
   apiKind?: string;
   description?: string;
   inputPriceHint?: string;
   outputPriceHint?: string;
   priceUnit?: string;
 };
+
+/** 支持原生联网搜索的厂商（DeepSeek 等暂不支持） */
+export function supportsNativeWebSearch(provider?: string): boolean {
+  return provider === "openai" || provider === "google";
+}
 
 export function modelMatchesMode(apiKind: string, mode: ChatMode): boolean {
   if (mode === "chat") return apiKind === "chat";

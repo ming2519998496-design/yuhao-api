@@ -11,25 +11,23 @@
 
 <!-- 每天把本节日期改成当天；新的一天复制「每日记录模板」到文末历史区 -->
 
-**日期：2026-06-27**
+**日期：2026-08-01**
 
 | # | 任务 | 状态 | 备注 |
 |---|------|------|------|
-| 1 | `/chat` 页面（对话/图像/视频 + Key 选择） | ✅ | Session 鉴权 Web API |
-| 2 | 历史记录自动保存（链接存媒体） | ✅ | 待 Run `supabase-chat-features.sql` |
-| 3 | Veo 视频解析与媒体代理 | 🟡 | 已修响应格式，待实机复测 |
-| 4 | AI 对话功能完善与自测 | 🟡 | 见 docs/ai-chat-roadmap.md |
-| 5 | 网站使用说明页 `/dashboard/guide` | ✅ | 侧栏「数据看板」下方 |
-| 6 | 配置一次性跑齐 + 上线清单 | ☐ | 阶段 C |
+| 1 | `/chat` 联网搜索开关（默认关） | ✅ | OpenAI / Gemini 可用；DeepSeek 禁用 |
+| 2 | Gemini `google_search` grounding + 来源 | ✅ | 平台内注入 tools |
+| 3 | OpenAI Responses API + `web_search` | ✅ | 非流式转 chat.completion |
+| 4 | 类型检查 / production build | ✅ | `tsc` + `npm run build` 通过 |
+| 5 | 生产实机联网问答复测 | ☐ | 部署后用 GPT / Gemini 问时事 |
 
-**今日小结**：AI 对话 MVP 已上线（/chat、历史、链接存图视频）；按三阶段推进：完善对话 → 使用说明页 → 批量配置。
+**今日小结**：实现 AI 对话原生联网搜索（OpenAI web_search + Gemini google_search），DeepSeek 开关禁用并有 400 防护；构建通过，待生产实机验收。
 
 **明日优先**
-- [ ] Run `supabase-chat-features.sql`，`npm run check:db` 验证
-- [ ] `/chat` 对话 + 图像 + 视频全流程自测
-- [ ] 按 [ai-chat-roadmap.md](./ai-chat-roadmap.md) 收尾阶段 A
-- [ ] 阶段 B：使用说明页内容按需补充
-- [ ] 阶段 C：对照 launch-checklist 一次性跑配置
+- [ ] 部署后：GPT + 联网问「今天科技新闻」验收
+- [ ] 部署后：Gemini 3.6 Flash + 联网同类验收
+- [ ] 确认 DeepSeek 开关不可用、关闭联网行为不变
+- [ ] 核对联网请求的 token 扣费账单
 
 ---
 
@@ -41,7 +39,7 @@
 | 本地 API 测试 | 🟢 | DeepSeek / Google / OpenAI curl 通过 |
 | 管理后台功能 | 🟢 | 上游 Key、价格导入、共享余额 |
 | 定价策略 | 🟢 | Scheme B：USD×7.2×分档加价，CSV 已生成 |
-| AI 对话（/chat） | 🟡 | 功能已有，待 SQL + 自测 |
+| AI 对话（/chat） | 🟡 | 已支持联网搜索；待生产实机验收 |
 | 上线部署 | ⚪ | Vercel + 正式域名 |
 
 ---
@@ -65,6 +63,7 @@
 - [x] Gemini 2.0 下架
 - [x] 上游 Key 即时生效 + 模型价格批量导入
 - [x] `/chat` AI 对话（对话/图像/视频 + 历史记录）
+- [x] `/chat` 联网搜索（OpenAI web_search / Gemini grounding）
 - [ ] `/chat` 数据库迁移执行 + 全流程自测
 - [x] 网站使用说明页（`/dashboard/guide`）
 - [ ] 虎皮椒等在线支付
@@ -90,6 +89,22 @@
 ---
 
 ## 历史每日记录
+
+<details>
+<summary>2026-06-27（点击展开）</summary>
+
+| # | 任务 | 状态 | 备注 |
+|---|------|------|------|
+| 1 | `/chat` 页面（对话/图像/视频 + Key 选择） | ✅ | Session 鉴权 Web API |
+| 2 | 历史记录自动保存（链接存媒体） | ✅ | 待 Run `supabase-chat-features.sql` |
+| 3 | Veo 视频解析与媒体代理 | 🟡 | 已修响应格式，待实机复测 |
+| 4 | AI 对话功能完善与自测 | 🟡 | 见 docs/ai-chat-roadmap.md |
+| 5 | 网站使用说明页 `/dashboard/guide` | ✅ | 侧栏「数据看板」下方 |
+| 6 | 配置一次性跑齐 + 上线清单 | ☐ | 阶段 C |
+
+**备注**：AI 对话 MVP 已上线；按三阶段推进完善对话 → 说明页 → 批量配置。
+
+</details>
 
 <details>
 <summary>2026-05-19（点击展开）</summary>

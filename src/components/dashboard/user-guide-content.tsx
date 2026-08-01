@@ -106,7 +106,8 @@ export function UserGuideContent() {
         <ul className="list-disc space-y-2 pl-5">
           <li>
             <strong className="text-foreground">对话</strong>：多轮聊天，支持
-            GPT、Gemini、DeepSeek 等（部分模型支持流式输出）。
+            GPT、Gemini、DeepSeek 等（部分模型支持流式输出）。可开启「联网搜索」让
+            OpenAI / Gemini 检索实时网页；DeepSeek 暂不支持。
           </li>
           <li>
             <strong className="text-foreground">图像</strong>：输入描述生成图片，可预览与下载。

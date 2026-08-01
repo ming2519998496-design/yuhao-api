@@ -17,6 +17,8 @@ export type RequestChatCompletionOptions = {
   model: string;
   messages: ChatPayloadMessage[];
   stream?: boolean;
+  /** 开启后走厂商原生联网搜索（OpenAI web_search / Gemini google_search） */
+  webSearch?: boolean;
   signal?: AbortSignal;
   turnstileToken?: string | null;
   onDelta: (delta: string) => void;
@@ -62,6 +64,7 @@ export async function requestChatCompletion(
         model: options.model,
         messages: options.messages,
         stream: useStream,
+        ...(options.webSearch ? { webSearch: true } : {}),
         turnstileToken: options.turnstileToken,
       }),
       signal: options.signal,

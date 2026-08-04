@@ -39,7 +39,7 @@ export async function POST(request: NextRequest) {
 
     if (!keyId) {
       return NextResponse.json(
-        { error: { message: "请选择 API Key", type: "auth_error" } },
+        { error: { message: "请选择 API Key", type: "auth_error", code: "missing_api_key" } },
         { status: 400 }
       );
     }
@@ -92,7 +92,7 @@ export async function POST(request: NextRequest) {
     const keyRow = keyRowResult.data;
     if (!keyRow) {
       return NextResponse.json(
-        { error: { message: "密钥不存在", type: "auth_error" } },
+        { error: { message: "密钥不存在", type: "auth_error", code: "invalid_api_key" } },
         { status: 404 }
       );
     }

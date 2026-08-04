@@ -35,7 +35,7 @@ export async function POST(request: NextRequest) {
     if (!authHeader || !authHeader.startsWith("Bearer ")) {
       await recordFailedApiKeyAttempt(request);
       return NextResponse.json(
-        { error: { message: "请提供 API Key", type: "auth_error" } },
+        { error: { message: "请提供 API Key", type: "auth_error", code: "missing_api_key" } },
         { status: 401 }
       );
     }
@@ -64,14 +64,14 @@ export async function POST(request: NextRequest) {
     if (keyError || !apiKey) {
       await recordFailedApiKeyAttempt(request);
       return NextResponse.json(
-        { error: { message: "无效的 API Key", type: "auth_error" } },
+        { error: { message: "无效的 API Key", type: "auth_error", code: "invalid_api_key" } },
         { status: 401 }
       );
     }
 
     if (!apiKey.is_active) {
       return NextResponse.json(
-        { error: { message: "API Key 已被禁用", type: "auth_error" } },
+        { error: { message: "API Key 已被禁用", type: "auth_error", code: "api_key_disabled" } },
         { status: 403 }
       );
     }
@@ -82,6 +82,7 @@ export async function POST(request: NextRequest) {
           error: {
             message: "账户已被冻结，API 调用已暂停",
             type: "auth_error",
+            code: "api_key_disabled",
           },
         },
         { status: 403 }

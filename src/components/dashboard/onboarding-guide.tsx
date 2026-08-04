@@ -40,8 +40,8 @@ const STEPS = [
   {
     id: "integrate",
     title: "复制配置接入项目",
-    description: "将 Base URL 与 Key 配置到 Cursor、Python 或 Node 项目",
-    href: "/docs/quickstart",
+    description: "将 Base URL 与 Key 配置到 Cursor、Continue、LiteLLM 等工具",
+    href: "/docs/integrations",
     icon: BookOpen,
     done: (p: Props) => p.hasApiCalls,
   },

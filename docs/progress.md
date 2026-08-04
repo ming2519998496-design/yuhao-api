@@ -11,23 +11,22 @@
 
 <!-- 每天把本节日期改成当天；新的一天复制「每日记录模板」到文末历史区 -->
 
-**日期：2026-08-01**
+**日期：2026-08-04**
 
 | # | 任务 | 状态 | 备注 |
 |---|------|------|------|
-| 1 | `/chat` 联网搜索开关（默认关） | ✅ | OpenAI / Gemini 可用；DeepSeek 禁用 |
-| 2 | Gemini `google_search` grounding + 来源 | ✅ | 平台内注入 tools |
-| 3 | OpenAI Responses API + `web_search` | ✅ | 非流式转 chat.completion |
-| 4 | 类型检查 / production build | ✅ | `tsc` + `npm run build` 通过 |
-| 5 | 生产实机联网问答复测 | ☐ | 部署后用 GPT / Gemini 问时事 |
+| 1 | 开发者文档中心 `/docs` | ✅ | 快速开始 / API / 一键配置 / 错误码 / 兼容 |
+| 2 | 错误码目录 + 运行时 `error.code` | ✅ | `api-error-codes.ts` 与鉴权/计费对齐 |
+| 3 | 常用框架一键配置 | ✅ | Cursor/Continue/Cline/LiteLLM/LangChain 等 |
+| 4 | 页脚与使用说明入口 | ✅ | 链到文档与一键配置 |
+| 5 | 提交部署 | 🟡 | PR 合并后生产生效 |
 
-**今日小结**：实现 AI 对话原生联网搜索（OpenAI web_search + Gemini google_search），DeepSeek 开关禁用并有 400 防护；构建通过，待生产实机验收。
+**今日小结**：补齐第二项「文档 + 错误码 + 一键配置」：上线文档站侧栏、错误码页、多工具复制配置，并收齐主要 API 错误的稳定 code。
 
 **明日优先**
-- [ ] 部署后：GPT + 联网问「今天科技新闻」验收
-- [ ] 部署后：Gemini 3.6 Flash + 联网同类验收
-- [ ] 确认 DeepSeek 开关不可用、关闭联网行为不变
-- [ ] 核对联网请求的 token 扣费账单
+- [ ] 合并 PR 后打开 `/docs`、`/docs/integrations`、`/docs/errors` 验收
+- [ ] 下一项：模型广场与公开状态页（或按排期）
+- [ ] 核对生产 Base URL（`NEXT_PUBLIC_SITE_URL`）在配置示例中正确
 
 ---
 
@@ -40,6 +39,7 @@
 | 管理后台功能 | 🟢 | 上游 Key、价格导入、共享余额 |
 | 定价策略 | 🟢 | Scheme B：USD×7.2×分档加价，CSV 已生成 |
 | AI 对话（/chat） | 🟡 | 已支持联网搜索；待生产实机验收 |
+| 开发者文档 | 🟢 | `/docs` 中心 + 错误码 + 一键配置 |
 | 上线部署 | ⚪ | Vercel + 正式域名 |
 
 ---
@@ -64,6 +64,7 @@
 - [x] 上游 Key 即时生效 + 模型价格批量导入
 - [x] `/chat` AI 对话（对话/图像/视频 + 历史记录）
 - [x] `/chat` 联网搜索（OpenAI web_search / Gemini grounding）
+- [x] 开发者文档中心（`/docs`：API / 错误码 / 一键配置）
 - [ ] `/chat` 数据库迁移执行 + 全流程自测
 - [x] 网站使用说明页（`/dashboard/guide`）
 - [ ] 虎皮椒等在线支付
@@ -89,6 +90,21 @@
 ---
 
 ## 历史每日记录
+
+<details>
+<summary>2026-08-01（点击展开）</summary>
+
+| # | 任务 | 状态 | 备注 |
+|---|------|------|------|
+| 1 | `/chat` 联网搜索开关（默认关） | ✅ | OpenAI / Gemini 可用；DeepSeek 禁用 |
+| 2 | Gemini `google_search` grounding + 来源 | ✅ | 平台内注入 tools |
+| 3 | OpenAI Responses API + `web_search` | ✅ | 非流式转 chat.completion |
+| 4 | 类型检查 / production build | ✅ | `tsc` + `npm run build` 通过 |
+| 5 | 生产实机联网问答复测 | ☐ | 部署后用 GPT / Gemini 问时事 |
+
+**备注**：AI 对话原生联网搜索已上线；待生产验收。
+
+</details>
 
 <details>
 <summary>2026-06-27（点击展开）</summary>

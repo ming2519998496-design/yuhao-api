@@ -255,13 +255,25 @@ function PlaygroundContent() {
           )}
 
           {callSucceeded && apiKey.trim() && modelApiKind === "chat" && (
-            <ApiIntegrationSnippets
-              apiKey={apiKey.trim()}
-              model={model}
-              prompt={prompt}
-              className="mt-4"
-              title="调用成功 · 复制接入配置"
-            />
+            <>
+              <ApiIntegrationSnippets
+                apiKey={apiKey.trim()}
+                model={model}
+                prompt={prompt}
+                className="mt-4"
+                title="调用成功 · 复制接入配置"
+              />
+              <p className="mt-2 text-xs text-muted">
+                更多工具（Continue、LiteLLM、LangChain 等）见{" "}
+                <Link
+                  href="/docs/integrations"
+                  className="text-accent-dark hover:underline"
+                >
+                  一键配置
+                </Link>
+                。
+              </p>
+            </>
           )}
 
           {generationMedia && (

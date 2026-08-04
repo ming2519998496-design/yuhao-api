@@ -49,6 +49,8 @@ Anthropic、Gemini 路径暂不支持流式透传。
 | 400 | `tools_not_supported` | Gemini 不支持 tools |
 | 500 | `billing_error` | 结算异常（少见；可加余额后重试） |
 
+完整错误码目录（含排查建议）见线上文档：[/docs/errors](/docs/errors)。兼容说明页：[/docs/compatibility](/docs/compatibility)。一键配置：[/docs/integrations](/docs/integrations)。
+
 ## 数据库迁移（结算补扣）
 
 若曾执行过旧版 `settle_balance`（不允许实付超过预扣），请在 Supabase SQL Editor 中重新执行 [`supabase-billing-reserve.sql`](../supabase-billing-reserve.sql) 中的 `settle_balance` 函数定义，或运行 `npm run db:setup`。

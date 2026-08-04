@@ -64,6 +64,7 @@ export async function runChatCompletions(
           error: {
             message: "请指定模型 (model)，或在令牌管理创建 Key 时设置默认模型",
             type: "invalid_request_error",
+            code: "model_required",
           },
         },
         { status: 400 }
@@ -77,6 +78,7 @@ export async function runChatCompletions(
           error: {
             message: `不支持的模型: ${modelId}`,
             type: "invalid_request_error",
+            code: "model_not_found",
           },
         },
         { status: 400 }
@@ -89,6 +91,7 @@ export async function runChatCompletions(
           error: {
             message: `此 API Key 无权调用模型 ${modelId}，请使用已授权分组下的模型`,
             type: "permission_error",
+            code: "model_not_allowed",
           },
         },
         { status: 403 }
@@ -101,6 +104,7 @@ export async function runChatCompletions(
           error: {
             message: `模型 ${modelId} 为图像/视频生成，请使用 POST /api/v1/generations`,
             type: "invalid_request_error",
+            code: "wrong_api_kind",
           },
         },
         { status: 400 }
@@ -115,6 +119,7 @@ export async function runChatCompletions(
           error: {
             message: `服务商 ${modelConfig.provider} 未配置`,
             type: "server_error",
+            code: "server_error",
           },
         },
         { status: 500 }

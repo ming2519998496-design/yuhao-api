@@ -217,6 +217,7 @@ export async function executeWithBilling(
             error: {
               message: "额度不足，请充值",
               type: "insufficient_quota",
+              code: "insufficient_quota",
             },
           },
           { status: 402 }
@@ -268,6 +269,7 @@ export async function executeWithBilling(
             error: {
               message: "计费失败，请稍后重试",
               type: "billing_error",
+              code: "billing_error",
             },
           },
           { status: 500 }
@@ -312,6 +314,7 @@ export async function reserveForRequest(
             error: {
               message: "额度不足，请充值",
               type: "insufficient_quota",
+              code: "insufficient_quota",
             },
           },
           { status: 402 }
@@ -397,6 +400,7 @@ export async function finalizeRequestBilling(
           error: {
             message: "计费失败，请稍后重试",
             type: "billing_error",
+            code: "billing_error",
           },
         },
         { status: 500 }
@@ -452,6 +456,7 @@ export async function executeWithFixedBilling(
             error: {
               message: "额度不足，请充值",
               type: "insufficient_quota",
+              code: "insufficient_quota",
             },
           },
           { status: 402 }
@@ -501,6 +506,7 @@ export async function executeWithFixedBilling(
             error: {
               message: "计费失败，请稍后重试",
               type: "billing_error",
+              code: "billing_error",
             },
           },
           { status: 500 }

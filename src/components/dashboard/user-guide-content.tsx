@@ -212,17 +212,26 @@ export function UserGuideContent() {
 
       <Section id="developer" title="6. 开发者接入">
         <p>
-          若要在 Cursor、Python、Node 等环境中调用本平台，请阅读{" "}
+          若要在 Cursor、Python、Node、LiteLLM 等环境中调用本平台，请阅读{" "}
+          <Link href="/docs" className="text-accent-dark hover:underline">
+            开发者文档
+          </Link>
+          ，或直接打开{" "}
           <Link
-            href="/docs/quickstart"
+            href="/docs/integrations"
             className="text-accent-dark hover:underline"
           >
-            API 快速开始
+            一键配置
           </Link>
           。接口兼容 OpenAI 格式，只需替换 Base URL 与 API Key。
         </p>
         <p>
-          也可使用{" "}
+          错误响应含稳定{" "}
+          <code className="rounded bg-background px-1">error.code</code>，详见{" "}
+          <Link href="/docs/errors" className="text-accent-dark hover:underline">
+            错误码
+          </Link>
+          。也可使用{" "}
           <Link href="/playground" className="text-accent-dark hover:underline">
             API 调试
           </Link>{" "}

@@ -34,7 +34,7 @@ export async function authenticateApiKeyRequest(
     return {
       ok: false,
       response: Response.json(
-        { error: { message: "请提供 API Key", type: "auth_error" } },
+        { error: { message: "请提供 API Key", type: "auth_error", code: "missing_api_key" } },
         { status: 401 }
       ),
     };
@@ -63,7 +63,7 @@ export async function authenticateApiKeyRequest(
     return {
       ok: false,
       response: Response.json(
-        { error: { message: "无效的 API Key", type: "auth_error" } },
+        { error: { message: "无效的 API Key", type: "auth_error", code: "invalid_api_key" } },
         { status: 401 }
       ),
     };
@@ -73,7 +73,7 @@ export async function authenticateApiKeyRequest(
     return {
       ok: false,
       response: Response.json(
-        { error: { message: "API Key 已被禁用", type: "auth_error" } },
+        { error: { message: "API Key 已被禁用", type: "auth_error", code: "api_key_disabled" } },
         { status: 403 }
       ),
     };
@@ -87,6 +87,7 @@ export async function authenticateApiKeyRequest(
           error: {
             message: "账户已被冻结，API 调用已暂停",
             type: "auth_error",
+            code: "api_key_disabled",
           },
         },
         { status: 403 }
@@ -107,6 +108,7 @@ export async function authenticateApiKeyRequest(
           error: {
             message: "请指定 model 参数",
             type: "invalid_request_error",
+            code: "model_required",
           },
         },
         { status: 400 }
@@ -123,6 +125,7 @@ export async function authenticateApiKeyRequest(
           error: {
             message: `不支持的模型: ${modelId}`,
             type: "invalid_request_error",
+            code: "model_not_found",
           },
         },
         { status: 400 }
@@ -142,6 +145,7 @@ export async function authenticateApiKeyRequest(
           error: {
             message: `此 API Key 无权调用模型 ${modelId}，请在令牌管理勾选对应分组`,
             type: "permission_error",
+            code: "model_not_allowed",
           },
         },
         { status: 403 }
@@ -170,7 +174,7 @@ export async function authenticateUserKeyById(
     return {
       ok: false,
       response: Response.json(
-        { error: { message: "请选择 API Key", type: "auth_error" } },
+        { error: { message: "请选择 API Key", type: "auth_error", code: "missing_api_key" } },
         { status: 400 }
       ),
     };
@@ -199,7 +203,7 @@ export async function authenticateUserKeyById(
     return {
       ok: false,
       response: Response.json(
-        { error: { message: "密钥不存在或无权访问", type: "auth_error" } },
+        { error: { message: "密钥不存在或无权访问", type: "auth_error", code: "invalid_api_key" } },
         { status: 404 }
       ),
     };
@@ -209,7 +213,7 @@ export async function authenticateUserKeyById(
     return {
       ok: false,
       response: Response.json(
-        { error: { message: "API Key 已被禁用", type: "auth_error" } },
+        { error: { message: "API Key 已被禁用", type: "auth_error", code: "api_key_disabled" } },
         { status: 403 }
       ),
     };
@@ -223,6 +227,7 @@ export async function authenticateUserKeyById(
           error: {
             message: "账户已被冻结，API 调用已暂停",
             type: "auth_error",
+            code: "api_key_disabled",
           },
         },
         { status: 403 }
@@ -243,6 +248,7 @@ export async function authenticateUserKeyById(
           error: {
             message: "请指定 model 参数",
             type: "invalid_request_error",
+            code: "model_required",
           },
         },
         { status: 400 }
@@ -259,6 +265,7 @@ export async function authenticateUserKeyById(
           error: {
             message: `不支持的模型: ${modelId}`,
             type: "invalid_request_error",
+            code: "model_not_found",
           },
         },
         { status: 400 }
@@ -278,6 +285,7 @@ export async function authenticateUserKeyById(
           error: {
             message: `此 API Key 无权调用模型 ${modelId}，请在令牌管理勾选对应分组`,
             type: "permission_error",
+            code: "model_not_allowed",
           },
         },
         { status: 403 }

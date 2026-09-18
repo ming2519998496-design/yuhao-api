@@ -40,7 +40,7 @@
 | 定价策略 | 🟢 | Scheme B：USD×7.2×分档加价，CSV 已生成 |
 | AI 对话（/chat） | 🟡 | 已支持联网搜索；待生产实机验收 |
 | 开发者文档 | 🟢 | `/docs` 中心 + 错误码 + 一键配置 |
-| 模型目录 | 🟢 | GPT-6 / Gemini 3.8 / DeepSeek Flash + 价目核验 |
+| 模型目录 | 🟢 | 对话 + GPT Image 2.5 / Gemini Flash Lite Image / Veo 3.1 |
 | 上线部署 | ⚪ | Vercel + 正式域名 |
 
 ---

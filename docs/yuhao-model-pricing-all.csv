@@ -23,7 +23,9 @@ gpt-6-astra,"GPT-6 Astra",84.96,424.8,
 gpt-image-1-mini,"GPT Image 1 Mini",0,0,0.1
 gpt-image-1,"GPT Image 1",0,0,0.59
 gpt-image-1.5,"GPT Image 1.5",0,0,0.47
-gpt-image-2,"GPT Image 2",0,0,0.5
+gpt-image-2,"GPT Image 2",0,0,0.49
+gpt-image-2.5-flare,"GPT Image 2.5 Flare",0,0,0.13
+gpt-image-2.5-sunburst,"GPT Image 2.5 Sunburst",0,0,0.13
 gemini-2.5-flash,"Gemini 2.5 Flash",2.59,21.6,
 gemini-2.5-flash-lite,"Gemini 2.5 Flash-Lite",0.83,3.31,
 gemini-2.5-pro,"Gemini 2.5 Pro",10.62,84.96,
@@ -41,12 +43,7 @@ gemini-3-pro-image,"Gemini 3 Pro Image",0,0,1.25
 nano-banana-pro-preview,"Nano Banana Pro Preview",0,0,1.25
 gemini-3.1-flash-image-preview,"Gemini 3.1 Flash Image Preview",0,0,0.63
 gemini-3.1-flash-image,"Gemini 3.1 Flash Image",0,0,0.63
-imagen-4.0-generate-001,"Imagen 4",0,0,0.37
-imagen-4.0-ultra-generate-001,"Imagen 4 Ultra",0,0,0.56
-imagen-4.0-fast-generate-001,"Imagen 4 Fast",0,0,0.19
-veo-2.0-generate-001,"Veo 2",0,0,26.21
-veo-3.0-generate-001,"Veo 3",0,0,29.95
-veo-3.0-fast-generate-001,"Veo 3 Fast",0,0,7.49
+gemini-3.1-flash-lite-image,"Gemini 3.1 Flash Lite Image",0,0,0.31
 veo-3.1-generate-preview,"Veo 3.1 Preview",0,0,29.95
 veo-3.1-fast-generate-preview,"Veo 3.1 Fast Preview",0,0,7.49
 veo-3.1-lite-generate-preview,"Veo 3.1 Lite Preview",0,0,3.74

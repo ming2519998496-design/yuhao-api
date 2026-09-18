@@ -1,6 +1,6 @@
 {
   "formula": "官方 USD × 7.2 × 加价（经济15% / 标准20% / 旗舰18% / 图像按次30%）",
-  "generatedAt": "2026-09-18T01:07:55.782Z",
+  "generatedAt": "2026-09-18T01:32:24.002Z",
   "models": [
     {
       "modelId": "gpt-4o",
@@ -178,7 +178,23 @@
       "name": "GPT Image 2",
       "inputPerMillion": 0,
       "outputPerMillion": 0,
-      "perRequestYuan": 0.5,
+      "perRequestYuan": 0.49,
+      "tier": "image"
+    },
+    {
+      "modelId": "gpt-image-2.5-flare",
+      "name": "GPT Image 2.5 Flare",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.13,
+      "tier": "image"
+    },
+    {
+      "modelId": "gpt-image-2.5-sunburst",
+      "name": "GPT Image 2.5 Sunburst",
+      "inputPerMillion": 0,
+      "outputPerMillion": 0,
+      "perRequestYuan": 0.13,
       "tier": "image"
     },
     {
@@ -307,51 +323,11 @@
       "tier": "image"
     },
     {
-      "modelId": "imagen-4.0-generate-001",
-      "name": "Imagen 4",
+      "modelId": "gemini-3.1-flash-lite-image",
+      "name": "Gemini 3.1 Flash Lite Image",
       "inputPerMillion": 0,
       "outputPerMillion": 0,
-      "perRequestYuan": 0.37,
-      "tier": "image"
-    },
-    {
-      "modelId": "imagen-4.0-ultra-generate-001",
-      "name": "Imagen 4 Ultra",
-      "inputPerMillion": 0,
-      "outputPerMillion": 0,
-      "perRequestYuan": 0.56,
-      "tier": "image"
-    },
-    {
-      "modelId": "imagen-4.0-fast-generate-001",
-      "name": "Imagen 4 Fast",
-      "inputPerMillion": 0,
-      "outputPerMillion": 0,
-      "perRequestYuan": 0.19,
-      "tier": "image"
-    },
-    {
-      "modelId": "veo-2.0-generate-001",
-      "name": "Veo 2",
-      "inputPerMillion": 0,
-      "outputPerMillion": 0,
-      "perRequestYuan": 26.21,
-      "tier": "image"
-    },
-    {
-      "modelId": "veo-3.0-generate-001",
-      "name": "Veo 3",
-      "inputPerMillion": 0,
-      "outputPerMillion": 0,
-      "perRequestYuan": 29.95,
-      "tier": "image"
-    },
-    {
-      "modelId": "veo-3.0-fast-generate-001",
-      "name": "Veo 3 Fast",
-      "inputPerMillion": 0,
-      "outputPerMillion": 0,
-      "perRequestYuan": 7.49,
+      "perRequestYuan": 0.31,
       "tier": "image"
     },
     {

@@ -30,14 +30,16 @@ export const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
 export const SYSTEM_ANNOUNCEMENTS: Announcement[] = [
   {
     id: "ann-model-catalog-2026-09-18",
-    title: "模型库更新：GPT-6 Astra、Gemini 3.8、DeepSeek Flash",
+    title: "模型库更新：GPT-6 Astra、Gemini 3.8、DeepSeek Flash、图像新模型",
     content: [
       "【新增】",
       "· OpenAI：gpt-6-astra（旗舰）",
       "· Google：gemini-3.7-flash、gemini-3.8-flash",
       "· DeepSeek：deepseek-flash（V4.1-Flash 主力；旧 ID deepseek-v4-flash 仍兼容）",
+      "· OpenAI 图像：gpt-image-2.5-flare、gpt-image-2.5-sunburst",
+      "· Google 图像：gemini-3.1-flash-lite-image",
     ].join("\n"),
-    publishedAt: "2026-09-18T01:10:00.000Z",
+    publishedAt: "2026-09-18T01:40:00.000Z",
     pinned: true,
   },
 ];

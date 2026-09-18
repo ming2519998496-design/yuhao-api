@@ -37,9 +37,21 @@
 1. **Gemini 引入价**：3.6/3.7/3.8 Flash 在 2027-01-01 起官价将升至 $1.50 / $7.50，届时需再同步。
 2. **DeepSeek 峰时计价**：平台按高峰档录入，避免峰时成本倒挂；用户在非峰时上游更便宜，平台仍按统一价结算。
 3. **长上下文 / Fast mode**：OpenAI 另有加价档，当前平台价按短上下文 Standard 计；若开放 Fast 档需单独加价项。
-4. **DB 价格覆盖**：若管理后台曾导入旧 CSV，可能覆盖代码默认价；请重新导入 `docs/yuhao-model-pricing.csv`。
-5. **图像模型**：本次未重核 gpt-image / Imagen / Veo；OpenAI 官网已出现 `gpt-image-2.5-*`，可另排期同步。
+4. **DB 价格覆盖**：若管理后台曾导入旧 CSV，可能覆盖代码默认价；请重新导入 `docs/yuhao-model-pricing-all.csv`（含按次价）或对话 CSV。
+5. **图像 / 视频（2026-09-18 已同步）**：
+
+| 模型 | 官方参考 | 平台按次 ¥ | 结果 |
+|------|----------|------------|------|
+| gpt-image-2 | $5 文本入 / $30 图像出 · medium 1024 ≈ $0.053 | 0.49 | ✅ |
+| gpt-image-2.5-flare | 同上 Token 价 · medium 1024 ≈ $0.014 | 0.13 | ✅ |
+| gpt-image-2.5-sunburst | 同上 | 0.13 | ✅ |
+| gemini-3.1-flash-lite-image | $0.0336 / 1K 张 | 0.31 | ✅ |
+| veo-3.1-generate-preview | $0.40/秒 × 8 秒 | 29.95 | ✅ |
+| veo-3.1-fast-generate-preview | $0.10/秒 × 8 秒 | 7.49 | ✅ |
+| veo-3.1-lite-generate-preview | $0.05/秒 × 8 秒 | 3.74 | ✅ |
+
+Imagen 4 与 Veo 2 / Veo 3.0 已按官网停用日下架。
 
 ## 公告
 
-系统公告 id：`ann-model-catalog-2026-09-18`（见 `SYSTEM_ANNOUNCEMENTS`），部署后用户登录弹窗与「公告通知」页可见。
+系统公告 id：`ann-model-catalog-2026-09-18`（见 `SYSTEM_ANNOUNCEMENTS`），部署后用户登录弹窗与「公告通知」页可见；本次仅在【新增】中追加图像新模型。

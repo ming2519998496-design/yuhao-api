@@ -54,6 +54,7 @@
     "nano-banana-pro-preview": { "tier": "image", "perRequestUsd": 0.134 },
     "gemini-3.1-flash-image-preview": { "tier": "image", "perRequestUsd": 0.067 },
     "gemini-3.1-flash-image": { "tier": "image", "perRequestUsd": 0.067 },
+    "gemini-3.1-flash-lite-image": { "tier": "image", "perRequestUsd": 0.0336 },
     "imagen-4.0-generate-001": { "tier": "image", "perRequestUsd": 0.04 },
     "imagen-4.0-ultra-generate-001": { "tier": "image", "perRequestUsd": 0.06 },
     "imagen-4.0-fast-generate-001": { "tier": "image", "perRequestUsd": 0.02 },
@@ -92,11 +93,33 @@
     },
     "gpt-image-2": {
       "tier": "image",
-      "in": 8,
+      "in": 5,
       "out": 30,
       "imageBilling": {
         "defaultPromptTokens": 100,
         "defaultOutputTokens": 1740,
+        "quality": "medium",
+        "size": "1024x1024"
+      }
+    },
+    "gpt-image-2.5-flare": {
+      "tier": "image",
+      "in": 5,
+      "out": 30,
+      "imageBilling": {
+        "defaultPromptTokens": 100,
+        "defaultOutputTokens": 439,
+        "quality": "medium",
+        "size": "1024x1024"
+      }
+    },
+    "gpt-image-2.5-sunburst": {
+      "tier": "image",
+      "in": 5,
+      "out": 30,
+      "imageBilling": {
+        "defaultPromptTokens": 100,
+        "defaultOutputTokens": 439,
         "quality": "medium",
         "size": "1024x1024"
       }

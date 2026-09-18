@@ -11,22 +11,22 @@
 
 <!-- 每天把本节日期改成当天；新的一天复制「每日记录模板」到文末历史区 -->
 
-**日期：2026-08-04**
+**日期：2026-09-18**
 
 | # | 任务 | 状态 | 备注 |
 |---|------|------|------|
-| 1 | 开发者文档中心 `/docs` | ✅ | 快速开始 / API / 一键配置 / 错误码 / 兼容 |
-| 2 | 错误码目录 + 运行时 `error.code` | ✅ | `api-error-codes.ts` 与鉴权/计费对齐 |
-| 3 | 常用框架一键配置 | ✅ | Cursor/Continue/Cline/LiteLLM/LangChain 等 |
-| 4 | 页脚与使用说明入口 | ✅ | 链到文档与一键配置 |
-| 5 | 提交部署 | 🟡 | PR 合并后生产生效 |
+| 1 | 同步 OpenAI 最新模型 | ✅ | 新增 gpt-6-astra；校正 5.6 Sol/Terra/Luna 官价 |
+| 2 | 同步 Gemini 最新 Flash | ✅ | 新增 3.7 / 3.8；3.6 改引入价 |
+| 3 | 同步 DeepSeek 最新 ID | ✅ | 主力 deepseek-flash；v4-flash 兼容映射 |
+| 4 | 重算平台价 CSV | ✅ | `node scripts/generate-model-pricing.mjs` |
+| 5 | 提交部署 | 🟡 | |
 
-**今日小结**：补齐第二项「文档 + 错误码 + 一键配置」：上线文档站侧栏、错误码页、多工具复制配置，并收齐主要 API 错误的稳定 code。
+**今日小结**：将 OpenAI / Google / DeepSeek 模型库对齐 2026-09 官网最新型号与价目。
 
 **明日优先**
-- [ ] 合并 PR 后打开 `/docs`、`/docs/integrations`、`/docs/errors` 验收
-- [ ] 下一项：模型广场与公开状态页（或按排期）
-- [ ] 核对生产 Base URL（`NEXT_PUBLIC_SITE_URL`）在配置示例中正确
+- [ ] 管理后台导入最新 `docs/yuhao-model-pricing.csv`（若有 DB 覆盖价）
+- [ ] 生产验收：gpt-6-astra / gemini-3.8-flash / deepseek-flash 各测一轮
+- [ ] 下一项：模型广场与公开状态页
 
 ---
 
@@ -40,6 +40,7 @@
 | 定价策略 | 🟢 | Scheme B：USD×7.2×分档加价，CSV 已生成 |
 | AI 对话（/chat） | 🟡 | 已支持联网搜索；待生产实机验收 |
 | 开发者文档 | 🟢 | `/docs` 中心 + 错误码 + 一键配置 |
+| 模型目录 | 🟢 | 已同步 GPT-6 / Gemini 3.8 / DeepSeek Flash |
 | 上线部署 | ⚪ | Vercel + 正式域名 |
 
 ---
@@ -90,6 +91,21 @@
 ---
 
 ## 历史每日记录
+
+<details>
+<summary>2026-08-04（点击展开）</summary>
+
+| # | 任务 | 状态 | 备注 |
+|---|------|------|------|
+| 1 | 开发者文档中心 `/docs` | ✅ | 快速开始 / API / 一键配置 / 错误码 / 兼容 |
+| 2 | 错误码目录 + 运行时 `error.code` | ✅ | `api-error-codes.ts` 与鉴权/计费对齐 |
+| 3 | 常用框架一键配置 | ✅ | Cursor/Continue/Cline/LiteLLM/LangChain 等 |
+| 4 | 页脚与使用说明入口 | ✅ | 链到文档与一键配置 |
+| 5 | 提交部署 | ✅ | PR #1 已合并 |
+
+**备注**：文档中心上线。
+
+</details>
 
 <details>
 <summary>2026-08-01（点击展开）</summary>

@@ -194,12 +194,14 @@ console.log(`已生成 docs/yuhao-model-pricing-full.json（含图像/视频按�
 console.log(`已更新 src/lib/models.ts 默认价（${Object.keys(pricingMap).length} 个已上架模型）`);
 console.log("\n主力模型平台价：");
 for (const key of [
-  "deepseek-v4-flash",
-  "gpt-5.6-luna",
-  "gpt-5.6-terra",
+  "gpt-6-astra",
   "gpt-5.6-sol",
+  "gpt-5.6-terra",
+  "gpt-5.6-luna",
+  "gemini-3.8-flash",
+  "gemini-3.7-flash",
   "gemini-3.6-flash",
-  "gemini-3.5-flash-lite",
+  "deepseek-flash",
   "deepseek-v4-pro",
 ]) {
   const p = pricingMap[key];

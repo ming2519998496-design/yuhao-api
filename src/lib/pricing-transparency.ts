@@ -310,10 +310,10 @@ function exampleLines(
 }
 
 const FEATURED_IDS = [
+  "gpt-6-astra",
   "gpt-5.6-luna",
-  "gemini-3.6-flash",
-  "deepseek-v4-flash",
-  "gpt-5.6-terra",
+  "gemini-3.8-flash",
+  "deepseek-flash",
 ] as const;
 
 export function buildFeaturedExamples(

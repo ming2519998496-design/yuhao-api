@@ -203,6 +203,13 @@ for (const key of [
   "gemini-3.6-flash",
   "deepseek-flash",
   "deepseek-v4-pro",
+  "gpt-image-2",
+  "gpt-image-2.5-flare",
+  "gpt-image-2.5-sunburst",
+  "gemini-3.1-flash-lite-image",
+  "veo-3.1-generate-preview",
+  "veo-3.1-fast-generate-preview",
+  "veo-3.1-lite-generate-preview",
 ]) {
   const p = pricingMap[key];
   if (p?.perRequestYuan) console.log(`  ${key}: ¥${p.perRequestYuan}/次`);

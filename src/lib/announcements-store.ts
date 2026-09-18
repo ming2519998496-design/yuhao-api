@@ -4,6 +4,7 @@ import {
   DEFAULT_ANNOUNCEMENTS,
   mergeAnnouncements,
   sortAnnouncements,
+  withSystemAnnouncements,
   type Announcement,
   type AnnouncementsPayload,
 } from "@/lib/announcements-settings";
@@ -57,7 +58,9 @@ export async function loadAnnouncements(): Promise<{
     throw new Error(error.message);
   }
 
-  const payload = { items: sortAnnouncements([...DEFAULT_ANNOUNCEMENTS]) };
+  const payload = {
+    items: withSystemAnnouncements([...DEFAULT_ANNOUNCEMENTS]),
+  };
   cache = {
     payload,
     updatedAt: null,

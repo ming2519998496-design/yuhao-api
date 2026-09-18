@@ -14,7 +14,7 @@ export const UPSTREAM_PROVIDERS: {
     id: "deepseek",
     label: "DeepSeek",
     envVar: "DEEPSEEK_API_KEY",
-    hint: "用于 deepseek-v4-flash、deepseek-v4-pro",
+    hint: "用于 deepseek-flash、deepseek-v4-pro（旧 ID deepseek-v4-flash 仍兼容）",
   },
   {
     id: "openai",

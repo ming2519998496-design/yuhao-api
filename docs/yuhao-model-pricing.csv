@@ -16,9 +16,10 @@ gpt-5.4,"GPT-5.4",21.24,127.44
 gpt-5.4-pro,"GPT-5.4 Pro",254.88,1529.28
 gpt-5.5,"GPT-5.5",42.48,254.88
 gpt-5.5-pro,"GPT-5.5 Pro",254.88,1529.28
-gpt-5.6-luna,"GPT-5.6 Luna",8.64,51.84
-gpt-5.6-terra,"GPT-5.6 Terra",21.24,127.44
-gpt-5.6-sol,"GPT-5.6 Sol",42.48,254.88
+gpt-5.6-luna,"GPT-5.6 Luna",1.66,9.94
+gpt-5.6-terra,"GPT-5.6 Terra",17.28,103.68
+gpt-5.6-sol,"GPT-5.6 Sol",33.98,169.92
+gpt-6-astra,"GPT-6 Astra",84.96,424.8
 gemini-2.5-flash,"Gemini 2.5 Flash",2.59,21.6
 gemini-2.5-flash-lite,"Gemini 2.5 Flash-Lite",0.83,3.31
 gemini-2.5-pro,"Gemini 2.5 Pro",10.62,84.96
@@ -27,6 +28,9 @@ gemini-3.1-pro-preview,"Gemini 3.1 Pro Preview",16.99,101.95
 gemini-3.1-flash-lite,"Gemini 3.1 Flash-Lite",2.07,12.42
 gemini-3.5-flash,"Gemini 3.5 Flash",12.96,77.76
 gemini-3.5-flash-lite,"Gemini 3.5 Flash-Lite",2.48,20.7
-gemini-3.6-flash,"Gemini 3.6 Flash",12.96,64.8
-deepseek-v4-flash,"DeepSeek V4 Flash",1.16,2.32
-deepseek-v4-pro,"DeepSeek V4 Pro",3.7,7.39
+gemini-3.6-flash,"Gemini 3.6 Flash",6.48,32.4
+gemini-3.7-flash,"Gemini 3.7 Flash",6.48,32.4
+gemini-3.8-flash,"Gemini 3.8 Flash",6.37,31.86
+deepseek-flash,"DeepSeek Flash",2.48,9.94
+deepseek-v4-flash,"DeepSeek V4 Flash（兼容）",2.48,9.94
+deepseek-v4-pro,"DeepSeek V4 Pro",11.21,33.64

@@ -1,6 +1,6 @@
 {
   "formula": "官方 USD × 7.2 × 加价（经济15% / 标准20% / 旗舰18% / 图像按次30%）",
-  "generatedAt": "2026-07-26T06:12:28.731Z",
+  "generatedAt": "2026-09-18T01:07:55.782Z",
   "models": [
     {
       "modelId": "gpt-4o",
@@ -124,22 +124,29 @@
     {
       "modelId": "gpt-5.6-luna",
       "name": "GPT-5.6 Luna",
-      "inputPerMillion": 8.64,
-      "outputPerMillion": 51.84,
-      "tier": "standard"
+      "inputPerMillion": 1.66,
+      "outputPerMillion": 9.94,
+      "tier": "economy"
     },
     {
       "modelId": "gpt-5.6-terra",
       "name": "GPT-5.6 Terra",
-      "inputPerMillion": 21.24,
-      "outputPerMillion": 127.44,
-      "tier": "flagship"
+      "inputPerMillion": 17.28,
+      "outputPerMillion": 103.68,
+      "tier": "standard"
     },
     {
       "modelId": "gpt-5.6-sol",
       "name": "GPT-5.6 Sol",
-      "inputPerMillion": 42.48,
-      "outputPerMillion": 254.88,
+      "inputPerMillion": 33.98,
+      "outputPerMillion": 169.92,
+      "tier": "flagship"
+    },
+    {
+      "modelId": "gpt-6-astra",
+      "name": "GPT-6 Astra",
+      "inputPerMillion": 84.96,
+      "outputPerMillion": 424.8,
       "tier": "flagship"
     },
     {
@@ -233,9 +240,23 @@
     {
       "modelId": "gemini-3.6-flash",
       "name": "Gemini 3.6 Flash",
-      "inputPerMillion": 12.96,
-      "outputPerMillion": 64.8,
+      "inputPerMillion": 6.48,
+      "outputPerMillion": 32.4,
       "tier": "standard"
+    },
+    {
+      "modelId": "gemini-3.7-flash",
+      "name": "Gemini 3.7 Flash",
+      "inputPerMillion": 6.48,
+      "outputPerMillion": 32.4,
+      "tier": "standard"
+    },
+    {
+      "modelId": "gemini-3.8-flash",
+      "name": "Gemini 3.8 Flash",
+      "inputPerMillion": 6.37,
+      "outputPerMillion": 31.86,
+      "tier": "flagship"
     },
     {
       "modelId": "gemini-2.5-flash-image",
@@ -358,17 +379,24 @@
       "tier": "image"
     },
     {
+      "modelId": "deepseek-flash",
+      "name": "DeepSeek Flash",
+      "inputPerMillion": 2.48,
+      "outputPerMillion": 9.94,
+      "tier": "economy"
+    },
+    {
       "modelId": "deepseek-v4-flash",
-      "name": "DeepSeek V4 Flash",
-      "inputPerMillion": 1.16,
-      "outputPerMillion": 2.32,
+      "name": "DeepSeek V4 Flash（兼容）",
+      "inputPerMillion": 2.48,
+      "outputPerMillion": 9.94,
       "tier": "economy"
     },
     {
       "modelId": "deepseek-v4-pro",
       "name": "DeepSeek V4 Pro",
-      "inputPerMillion": 3.7,
-      "outputPerMillion": 7.39,
+      "inputPerMillion": 11.21,
+      "outputPerMillion": 33.64,
       "tier": "flagship"
     }
   ]

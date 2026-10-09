@@ -29,6 +29,16 @@ export const DEFAULT_ANNOUNCEMENTS: Announcement[] = [
  */
 export const SYSTEM_ANNOUNCEMENTS: Announcement[] = [
   {
+    id: "ann-model-catalog-2026-10-09",
+    title: "模型库更新：GPT-6 Luna / Sol / 6.1 Sol",
+    content: [
+      "【新增】",
+      "· OpenAI：gpt-6-luna（经济）、gpt-6-sol、gpt-6.1-sol（均衡主力）",
+    ].join("\n"),
+    publishedAt: "2026-10-09T00:30:00.000Z",
+    pinned: true,
+  },
+  {
     id: "ann-model-catalog-2026-09-18",
     title: "模型库更新：GPT-6 Astra、Gemini 3.8、DeepSeek Flash、图像新模型",
     content: [
@@ -40,7 +50,7 @@ export const SYSTEM_ANNOUNCEMENTS: Announcement[] = [
       "· Google 图像：gemini-3.1-flash-lite-image",
     ].join("\n"),
     publishedAt: "2026-09-18T01:40:00.000Z",
-    pinned: true,
+    pinned: false,
   },
 ];
 

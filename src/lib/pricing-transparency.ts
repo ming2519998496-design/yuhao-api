@@ -82,9 +82,9 @@ const TIER_LABELS = officialData.tierLabels as Record<PricingTierId, string>;
 const OFFICIAL = officialData.models as Record<string, OfficialSpec>;
 
 const TIER_SUMMARY: Record<PricingTierId, string> = {
-  economy: "DeepSeek V4 Flash、Gemini Flash-Lite",
-  standard: "GPT-5.6 Luna、Gemini 3.6 Flash",
-  flagship: "GPT-5.6 Sol/Terra、Gemini 3.1 Pro",
+  economy: "DeepSeek Flash、GPT-6 Luna、Gemini Flash-Lite",
+  standard: "GPT-5.6 Terra、Gemini 3.6 Flash",
+  flagship: "GPT-6.1 Sol、GPT-6 Astra、Gemini 3.8 Flash",
   image: "图像与视频生成",
 };
 
